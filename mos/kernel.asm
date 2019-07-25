@@ -1,31 +1,62 @@
+;; (c) 2019 Dossytronics, Dominic Beesley
+
 		include "mos.inc"
 		include "oslib.inc"
 		include "hardware.inc"
+		include "kernel_defs.inc"
 
 
-screen_ptr	:=	$300
-col_ctr		:=	$304
+		xdef 		handle_res
+		xdef		handle_bus_err
+		xdef		handle_addr_err
+		xdef		handle_illegal
+		xdef		handle_div0
+		xdef		handle_chk
+		xdef		handle_trapv
+		xdef		handle_priv
+		xdef		handle_trace
+		xdef		handle_opA
+		xdef		handle_opF
+		xdef		handle_int_spur
+		xdef		handle_int_1
+		xdef		handle_int_2
+		xdef		handle_int_3
+		xdef		handle_int_4
+		xdef		handle_int_5
+		xdef		handle_int_6
+		xdef		handle_int_7
+		xdef		handle_trap_0
+		xdef		handle_trap_1
+		xdef		handle_trap_2
+		xdef		handle_trap_3
+		xdef		handle_trap_4
+		xdef		handle_trap_5
+		xdef		handle_trap_6
+		xdef		handle_trap_7
+		xdef		handle_trap_8
+		xdef		handle_trap_9
+		xdef		handle_trap_A
+		xdef		handle_trap_B
+		xdef		handle_trap_C
+		xdef		handle_trap_D
+		xdef		handle_trap_E
+		xdef		handle_trap_F
 
-screen_start	:=	$FF3000
-screen_len	:=	$5000
 
-		ORG	$8D0000
-base:
-STACK		:=	$1000
 
-;phony rom header so we can see ourself in *ROMS
-		dcb.b	6, $FF
-		dc.b	$68				; special 68k mos type
-		dc.b	copy-base
-		dc.b	$00
-		dc.b	"m68k MOS",0,"v0.00"
+		SECTION "code"
 
-copy:		dc.b	0, "(C) Dossytronics 2019", 0
+handle_res:	
+		; copy rom vectors to low memory
+		lea	(romv_start,PC),A6
+		movea	#0, A0
+		move.b	#$64, D0
+.lp:		move.l	(A6)+,(A0)+
+		dbf	D0,.lp
 
-		align	2
-font:		incbin	"font.bin"
 
-handle_res:	bsr.b	cls
+
+		bsr.b	cls
 		lea	(test_d,PC),A0
 		bsr.b	PrString
 		move.l	#$FACEBEEF,D0
@@ -33,6 +64,7 @@ handle_res:	bsr.b	cls
 		move.l	#$DEADBEEF,D2
 		move.l	#$D0B0D0B0,D3
 		move.w	#$0000,D3
+
 		
 here:		trap	#$F
 
@@ -401,44 +433,5 @@ str_trap_D:	dc.b	"trap_D",0
 str_trap_E:	dc.b	"trap_E",0
 str_trap_F:	dc.b	"trap_F",0
 
-		ORG	$8D3F00
-v_stack:	dc.l	STACK
-v_reset:	dc.l	handle_res
-v_be:		dc.l	handle_bus_err
-v_addr_err:	dc.l	handle_addr_err
-v_illegal:	dc.l	handle_illegal
-v_div0:		dc.l	handle_div0
-v_chk:		dc.l	handle_chk
-v_trapv:	dc.l	handle_trapv
-v_priv:		dc.l	handle_priv
-v_trace:	dc.l	handle_trace
-v_opA:		dc.l	handle_opA
-v_opF:		dc.l	handle_opF
-		blk.l	12,0
-v_int_spur	dc.l	handle_int_spur
-v_int_1		dc.l	handle_int_1
-v_int_2		dc.l	handle_int_2
-v_int_3		dc.l	handle_int_3
-v_int_4		dc.l	handle_int_4
-v_int_5		dc.l	handle_int_5
-v_int_6		dc.l	handle_int_6
-v_int_7		dc.l	handle_int_7
-v_trap_0	dc.l	handle_trap_0
-v_trap_1	dc.l	handle_trap_1
-v_trap_2	dc.l	handle_trap_2
-v_trap_3	dc.l	handle_trap_3
-v_trap_4	dc.l	handle_trap_4
-v_trap_5	dc.l	handle_trap_5
-v_trap_6	dc.l	handle_trap_6
-v_trap_7	dc.l	handle_trap_7
-v_trap_8	dc.l	handle_trap_8
-v_trap_9	dc.l	handle_trap_9
-v_trap_A	dc.l	handle_trap_A
-v_trap_B	dc.l	handle_trap_B
-v_trap_C	dc.l	handle_trap_C
-v_trap_D	dc.l	handle_trap_D
-v_trap_E	dc.l	handle_trap_E
-v_trap_F	dc.l	handle_trap_F
-		blk.l	16,0
 
 
