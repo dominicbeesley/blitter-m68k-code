@@ -31,6 +31,8 @@ handle_res:	bsr.b	cls
 		move.l	#$FACEBEEF,D0
 		move.l	#$BEEFDEAD,D1
 		move.l	#$DEADBEEF,D2
+		move.l	#$D0B0D0B0,D3
+		move.w	#$0000,D3
 		
 here:		trap	#$F
 
@@ -305,6 +307,7 @@ intmsg_lp0:
 		bsr	doOSWRCH
 
 		move	A7,D0
+		add.l	#66,D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
