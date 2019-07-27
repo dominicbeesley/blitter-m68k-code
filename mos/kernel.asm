@@ -50,23 +50,37 @@ handle_res:
 		; copy rom vectors to low memory
 		lea	(romv_start,PC),A6
 		movea	#0, A0
-		move.b	#$64, D0
+		moveq	#$63, D0
 .lp:		move.l	(A6)+,(A0)+
 		dbf	D0,.lp
 
+		; switch maps by temporarily selecting blitter device
+		move.b	#JIM_DEVNO_BLITTER,(fred_JIM_DEVNO)
+		clr.b	(fred_JIM_DEVNO)
 
 
-		bsr.b	cls
+
+		bsr	cls
 		lea	(test_d,PC),A0
-		bsr.b	PrString
+		bsr	PrString
 		move.l	#$FACEBEEF,D0
 		move.l	#$BEEFDEAD,D1
 		move.l	#$DEADBEEF,D2
 		move.l	#$D0B0D0B0,D3
 		move.w	#$0000,D3
 
+		; boot bodges
+		clr.b	oswksp_VDU_INTERLACE
+		clr.b	oswksp_VDU_VERTADJ
+
+
+
+		moveq	#0,D0				; init mode 0
+		bsr	mos_VDU_init
+
+there:		trap	#$F
+
 		
-here:		trap	#$F
 
 cls:		movea.l	#screen_start,A0
 		clr.b	col_ctr
@@ -291,7 +305,7 @@ intmsg
 		jsr	doOSWRCH
 
 		clr.b	D2
-		clr.b	D3
+		clr.w	D3
 intmsg_lp0:	
 		moveq	#'D',D0
 		bsr	doOSWRCH
@@ -303,7 +317,7 @@ intmsg_lp0:
 		moveq	#' ',D0
 		jsr	doOSWRCH
 
-		move.l	0(A7,D3),D0
+		move.l	0(A7,D3.w),D0
 		bsr	PrHex_l
 
 		moveq	#' ',D0
@@ -322,7 +336,7 @@ intmsg_lp0:
 		moveq	#' ',D0
 		jsr	doOSWRCH
 
-		move.l	32(A7,D3),D0
+		move.l	32(A7,D3.w),D0
 		bsr	PrHex_l
 
 		moveq	#13,D0

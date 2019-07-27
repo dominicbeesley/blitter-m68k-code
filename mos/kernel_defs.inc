@@ -1,5 +1,5 @@
-screen_ptr	:=	$300
-col_ctr		:=	$304
+screen_ptr	:=	$E00
+col_ctr		:=	$E04
 
 screen_start	:=	$FF3000
 screen_len	:=	$5000

@@ -1,13 +1,12 @@
-; beeb6809 hardware locations and constants
+; beeb68008 hardware locations and constants
 
-rti_opcode		:=	$3B
 
-JIM			:=	$FD00
+JIM			:=	$FFFD00
 
 * mos ROM memory map location
-sheila_ROMCTL_SWR	:=	$FE30
-sheila_ROMCTL_MOS	:=	$FE31
-sheila_MEM_DEBUG_SAVE	:=	$FE32
+sheila_ROMCTL_SWR	:=	$FFFE30
+sheila_ROMCTL_MOS	:=	$FFFE31
+sheila_MEM_DEBUG_SAVE	:=	$FFFE32
 
 ROMCTL_BITS_FLEX	:=	$10
 
@@ -20,21 +19,21 @@ BITS_MEM_CTL_FLEX		:= $10
 BITS_MEM_CTL_SWMOS_DEBUG_5C	:= $40
 BITS_MEM_CTL_SWMOS_DEBUG_ACT	:= $80
 
-fred_JIM_DEVNO		:=	$FCFF
-fred_JIM_PAGE_HI	:=	$FCFD
-fred_JIM_PAGE_LO	:=	$FCFE
+fred_JIM_DEVNO		:=	$FFFCFF
+fred_JIM_PAGE_HI	:=	$FFFCFD
+fred_JIM_PAGE_LO	:=	$FFFCFE
 	
-sheila_NULA_CTLAUX	:=	$FE22
-sheila_NULA_PALAUX	:=	$FE23
+sheila_NULA_CTLAUX	:=	$FFFE22
+sheila_NULA_PALAUX	:=	$FFFE23
 
-sheila_DEBUG		:=	$FEFF
-
-
-sheila_MEM_LOMEMTURBO	:=	$FE37
+sheila_DEBUG		:=	$FFFEFF
 
 
-sheila_BLTCFG0		:=	$FE3E
-sheila_BLTCFG1		:=	$FE3F
+sheila_MEM_LOMEMTURBO	:=	$FFFE37
+
+
+sheila_BLTCFG0		:=	$FFFE3E
+sheila_BLTCFG1		:=	$FFFE3F
 BLTCFG0_T65		:=	$01
 BLTCFG0_CPU_6502A_2M	:=	$00
 BLTCFG0_CPU_65C02_4M	:=	$02
@@ -52,31 +51,13 @@ BLTCFG1_BUGOUT		:=	$02
 
 	ENDIF
 
-	IF MACH_CHIPKIT
-sheila_ROMCTL_RAM	:=	$FE32
-sheila_MEMC_SCROFF	:=	$FE33
-	ENDIF
 
-
-
-* HARDWARELOC - area of RAM used for memory mapped hardware
-HARDWARELOC				:= $FC00
-HARDWARELOC_END				:= $FEFF
-
-* Where the remapped 6809 vectors live, the hardware remaps
-* the 6809 hardware vectors to avoid the OS calls in the original 6502 memory map
-REMAPPED_HW_VECTORS			:= $F7F0
-
-OFF_SWI_VEC	:=	$A
-OFF_NMI_VEC	:=	$C
-OFF_RES_VEC	:=	$E
-HW_VECTOR_COUNT	:=	8
 
 ***********************************************************************
 * CRTC                                                                *
 ***********************************************************************
-sheila_CRTC_reg				:= $FE00
-sheila_CRTC_rw				:= $FE01
+sheila_CRTC_reg				:= $FFFE00
+sheila_CRTC_rw				:= $FFFE01
 
 
 CRTCR0_HorizontalTotal        		:=  	 0	; 8b WO m0-3:127 m4-7:63
@@ -97,17 +78,17 @@ CRTCR13_Screen1stCharLo       		:=	13	; 8b WO lo byte of (start of screen addres
 ***********************************************************************
 * Simple Video ULA                                                    *
 ***********************************************************************
-sheila_VIDULA_ctl			:= $FE20
-sheila_VIDULA_pal			:= $FE21
+sheila_VIDULA_ctl			:= $FFFE20
+sheila_VIDULA_pal			:= $FFFE21
 	IF MACH_CHIPKIT
-sheila_VIDULA_pixand			:= $FE22
-sheila_VIDULA_pixeor			:= $FE23
-sheila_VIDULA_ttx			:= $FE24
+sheila_VIDULA_pixand			:= $FFFE22
+sheila_VIDULA_pixeor			:= $FFFE23
+sheila_VIDULA_ttx			:= $FFFE24
 
-sheila_RAMDAC_ADDR_WR			:= $FE28
-sheila_RAMDAC_VAL			:= $FE29
-sheila_RAMDAC_PIXMASK			:= $FE2A
-sheila_RAMDAC_ADDR_RD			:= $FE2B
+sheila_RAMDAC_ADDR_WR			:= $FFFE28
+sheila_RAMDAC_VAL			:= $FFFE29
+sheila_RAMDAC_PIXMASK			:= $FFFE2A
+sheila_RAMDAC_ADDR_RD			:= $FFFE2B
 	ENDIF
 
 ***********************************************************************
@@ -128,22 +109,22 @@ SYSVIA_MASK_INT_VSYNC			:=	VIA_MASK_INT_CA1
 ***********************************************************************
 * System VIA                                                          *
 ***********************************************************************
-sheila_SYSVIA_orb			:= $FE40
-sheila_SYSVIA_ora			:= $FE41
-sheila_SYSVIA_ddrb			:= $FE42
-sheila_SYSVIA_ddra			:= $FE43
-sheila_SYSVIA_t1cl			:= $FE44
-sheila_SYSVIA_t1ch			:= $FE45
-sheila_SYSVIA_t1ll			:= $FE46
-sheila_SYSVIA_t1lh			:= $FE47
-sheila_SYSVIA_t2cl			:= $FE48
-sheila_SYSVIA_t2ch			:= $FE49
-sheila_SYSVIA_sr			:= $FE4A
-sheila_SYSVIA_acr			:= $FE4B
-sheila_SYSVIA_pcr			:= $FE4C
-sheila_SYSVIA_ifr			:= $FE4D
-sheila_SYSVIA_ier			:= $FE4E
-sheila_SYSVIA_ora_nh			:= $FE4F
+sheila_SYSVIA_orb			:= $FFFE40
+sheila_SYSVIA_ora			:= $FFFE41
+sheila_SYSVIA_ddrb			:= $FFFE42
+sheila_SYSVIA_ddra			:= $FFFE43
+sheila_SYSVIA_t1cl			:= $FFFE44
+sheila_SYSVIA_t1ch			:= $FFFE45
+sheila_SYSVIA_t1ll			:= $FFFE46
+sheila_SYSVIA_t1lh			:= $FFFE47
+sheila_SYSVIA_t2cl			:= $FFFE48
+sheila_SYSVIA_t2ch			:= $FFFE49
+sheila_SYSVIA_sr			:= $FFFE4A
+sheila_SYSVIA_acr			:= $FFFE4B
+sheila_SYSVIA_pcr			:= $FFFE4C
+sheila_SYSVIA_ifr			:= $FFFE4D
+sheila_SYSVIA_ier			:= $FFFE4E
+sheila_SYSVIA_ora_nh			:= $FFFE4F
 
 ***********************************************************************
 * SYS VIA - slow data bus RTC                                         *
@@ -170,22 +151,22 @@ RTC_REG_YEAR	:=		$9
 ***********************************************************************
 * User VIA                                                            *
 ***********************************************************************
-sheila_USRVIA_orb			:= $FE60
-sheila_USRVIA_ora			:= $FE61
-sheila_USRVIA_ddrb			:= $FE62
-sheila_USRVIA_ddra			:= $FE63
-sheila_USRVIA_t1cl			:= $FE64
-sheila_USRVIA_t1ch			:= $FE65
-sheila_USRVIA_t1ll			:= $FE66
-sheila_USRVIA_t1lh			:= $FE67
-sheila_USRVIA_t2cl			:= $FE68
-sheila_USRVIA_t2ch			:= $FE69
-sheila_USRVIA_sr			:= $FE6A
-sheila_USRVIA_acr			:= $FE6B
-sheila_USRVIA_pcr			:= $FE6C
-sheila_USRVIA_ifr			:= $FE6D
-sheila_USRVIA_ier			:= $FE6E
-sheila_USRVIA_ora_nh			:= $FE6F
+sheila_USRVIA_orb			:= $FFFE60
+sheila_USRVIA_ora			:= $FFFE61
+sheila_USRVIA_ddrb			:= $FFFE62
+sheila_USRVIA_ddra			:= $FFFE63
+sheila_USRVIA_t1cl			:= $FFFE64
+sheila_USRVIA_t1ch			:= $FFFE65
+sheila_USRVIA_t1ll			:= $FFFE66
+sheila_USRVIA_t1lh			:= $FFFE67
+sheila_USRVIA_t2cl			:= $FFFE68
+sheila_USRVIA_t2ch			:= $FFFE69
+sheila_USRVIA_sr			:= $FFFE6A
+sheila_USRVIA_acr			:= $FFFE6B
+sheila_USRVIA_pcr			:= $FFFE6C
+sheila_USRVIA_ifr			:= $FFFE6D
+sheila_USRVIA_ier			:= $FFFE6E
+sheila_USRVIA_ora_nh			:= $FFFE6F
 
 
 ***********************************************************************
@@ -207,32 +188,32 @@ VIA_IFR_BIT_CA2				:= $01
 * BBC B/B+ WD177x                                                     *
 ***********************************************************************
 
-sheila_1770_dcontrol	:=	$FE80
-sheila_1770_wdc_cmd	:=	$FE84
-sheila_1770_wdc_trk	:=	$FE85
-sheila_1770_wdc_sec	:=	$FE86
-sheila_1770_wdc_dat	:=	$FE87
+sheila_1770_dcontrol	:=	$FFFE80
+sheila_1770_wdc_cmd	:=	$FFFE84
+sheila_1770_wdc_trk	:=	$FFFE85
+sheila_1770_wdc_sec	:=	$FFFE86
+sheila_1770_wdc_dat	:=	$FFFE87
 	ENDIF
 
 ***********************************************************************
 * TUBE                                                                *
 ***********************************************************************
 
-sheila_TUBE_R1_STATUS			:= $FEE0
-sheila_TUBE_R1_DATA			:= $FEE1
-sheila_TUBE_R2_STATUS			:= $FEE2
-sheila_TUBE_R2_DATA			:= $FEE3
-sheila_TUBE_R3_STATUS			:= $FEE4
-sheila_TUBE_R3_DATA			:= $FEE5
-sheila_TUBE_R4_STATUS			:= $FEE6
-sheila_TUBE_R4_DATA			:= $FEE7
+sheila_TUBE_R1_STATUS			:= $FFFEE0
+sheila_TUBE_R1_DATA			:= $FFFEE1
+sheila_TUBE_R2_STATUS			:= $FFFEE2
+sheila_TUBE_R2_DATA			:= $FFFEE3
+sheila_TUBE_R3_STATUS			:= $FFFEE4
+sheila_TUBE_R3_DATA			:= $FFFEE5
+sheila_TUBE_R4_STATUS			:= $FFFEE6
+sheila_TUBE_R4_DATA			:= $FFFEE7
 
 
 	IF MACH_CHIPKIT
 *============================================================================
 *  :=ates for memory mapped 16450 serial port 
 *============================================================================
-S16550			:=	$FE78			; base of 16450 UART
+S16550			:=	$FFFE78			; base of 16450 UART
 S16550_RXR		:=	S16550+0		; Receiver buffer register
 S16550_TXR		:=	S16550+0		; Transmitter buffer register
 S16550_IER		:=	S16550+1		; Interrupt enable register
@@ -248,8 +229,8 @@ SER_BIT_TXRDY		:=	$20            ; BIT MASK FOR TX BUFFER EMPTY
 SER_BAUD_CLOCK_IN	:=	7372800			; fr:=ency of on board serial crystal
 
 
-sheila_VINC_data	:=	$FE50
-sheila_VINC_status	:=	$FE52
+sheila_VINC_data	:=	$FFFE50
+sheila_VINC_status	:=	$FFFE52
 VINC_status_TXE		:=	$01
 VINC_status_RXF		:=	$02
 	ENDIF
@@ -257,14 +238,14 @@ VINC_status_RXF		:=	$02
 	IF MACH_BEEB
 
 * note: this are for Retroclinic DC
-sheila_VINC_data	:=	$FCF8
-sheila_VINC_status	:=	$FCF9
+sheila_VINC_data	:=	$FFFCF8
+sheila_VINC_status	:=	$FFFCF9
 VINC_status_TXE		:=	$40
 VINC_status_RXF		:=	$80
 
-sheila_ACIA_CTL		:=	$FE08
-sheila_ACIA_DATA	:=	$FE09
-sheila_SERIAL_ULA	:=	$FE10
+sheila_ACIA_CTL		:=	$FFFE08
+sheila_ACIA_DATA	:=	$FFFE09
+sheila_SERIAL_ULA	:=	$FFFE10
 ACIA_RDRF		:=	$01
 ACIA_TDRE		:=	$02
 
@@ -363,8 +344,9 @@ DMAC_DMA_CTL2_offs		:=	$3A
 DMAC_DMA_PAUSE_offs		:=	$3B
 DMAC_DMA_SEL_offs		:=	$3F
 
+;; these addresses when accessing through page wide ram / JIM
 jim_page_DMAC			:=	$FEFC		; hardware jim page
-jim_DMAC			:=	$FD60		; jim location in SYS map
+jim_DMAC			:=	$FFFD60		; jim location in SYS map
 
 jim_DMAC_BLITCON		:=	jim_DMAC + DMAC_BLITCON_offs
 jim_DMAC_FUNCGEN		:=	jim_DMAC + DMAC_FUNCGEN_offs
@@ -393,10 +375,9 @@ jim_DMAC_SND_STATUS		:=	jim_DMAC + DMAC_SND_STATUS_offs
 jim_DMAC_SND_VOL		:=	jim_DMAC + DMAC_SND_VOL_offs
 jim_DMAC_SND_REPOFF		:=	jim_DMAC + DMAC_SND_REPOFF_offs
 jim_DMAC_SND_PEAK		:= 	jim_DMAC + DMAC_SND_PEAK_offs
-
-
 jim_DMAC_SND_SEL		:=	jim_DMAC + DMAC_SND_SEL_offs
 jim_DMAC_SND_MA_VOL		:=	jim_DMAC + DMAC_SND_MA_VOL_offs
+
 
 jim_DMAC_DMA_CTL		:=	jim_DMAC + DMAC_DMA_CTL_offs
 jim_DMAC_DMA_SRC_ADDR		:=	jim_DMAC + DMAC_DMA_SRC_ADDR_offs
@@ -406,6 +387,51 @@ jim_DMAC_DMA_DATA		:=	jim_DMAC + DMAC_DMA_DATA_offs
 jim_DMAC_DMA_CTL2		:=	jim_DMAC + DMAC_DMA_CTL2_offs
 jim_DMAC_DMA_PAUSE		:=	jim_DMAC + DMAC_DMA_PAUSE_offs
 jim_DMAC_DMA_SEL		:=	jim_DMAC + DMAC_DMA_SEL_offs
+
+
+;; these addresses when accessing direct - preferred on 68008
+blit_DMAC			:=	$FEFC60
+
+blit_DMAC_BLITCON		:=	blit_DMAC + DMAC_BLITCON_offs
+blit_DMAC_FUNCGEN		:=	blit_DMAC + DMAC_FUNCGEN_offs
+blit_DMAC_WIDTH			:=	blit_DMAC + DMAC_WIDTH_offs
+blit_DMAC_HEIGHT			:=	blit_DMAC + DMAC_HEIGHT_offs
+blit_DMAC_SHIFT			:=	blit_DMAC + DMAC_SHIFT_offs
+blit_DMAC_MASK_FIRST		:=	blit_DMAC + DMAC_MASK_FIRST_offs
+blit_DMAC_MASK_LAST		:=	blit_DMAC + DMAC_MASK_LAST_offs
+blit_DMAC_DATA_A		:=	blit_DMAC + DMAC_DATA_A_offs
+blit_DMAC_ADDR_A		:=	blit_DMAC + DMAC_ADDR_A_offs
+blit_DMAC_DATA_B		:=	blit_DMAC + DMAC_DATA_B_offs
+blit_DMAC_ADDR_B		:=	blit_DMAC + DMAC_ADDR_B_offs
+blit_DMAC_ADDR_C		:=	blit_DMAC + DMAC_ADDR_C_offs
+blit_DMAC_ADDR_D		:=	blit_DMAC + DMAC_ADDR_D_offs
+blit_DMAC_ADDR_E		:=	blit_DMAC + DMAC_ADDR_E_offs
+blit_DMAC_STRIDE_A		:=	blit_DMAC + DMAC_STRIDE_A_offs
+blit_DMAC_STRIDE_B		:=	blit_DMAC + DMAC_STRIDE_B_offs
+blit_DMAC_STRIDE_C		:=	blit_DMAC + DMAC_STRIDE_C_offs
+blit_DMAC_STRIDE_D		:=	blit_DMAC + DMAC_STRIDE_D_offs
+
+blit_DMAC_SND_DATA		:=	blit_DMAC + DMAC_SND_DATA_offs
+blit_DMAC_SND_ADDR		:=	blit_DMAC + DMAC_SND_ADDR_offs
+blit_DMAC_SND_PERIOD		:=	blit_DMAC + DMAC_SND_PERIOD_offs
+blit_DMAC_SND_LEN		:=	blit_DMAC + DMAC_SND_LEN_offs
+blit_DMAC_SND_STATUS		:=	blit_DMAC + DMAC_SND_STATUS_offs
+blit_DMAC_SND_VOL		:=	blit_DMAC + DMAC_SND_VOL_offs
+blit_DMAC_SND_REPOFF		:=	blit_DMAC + DMAC_SND_REPOFF_offs
+blit_DMAC_SND_PEAK		:= 	blit_DMAC + DMAC_SND_PEAK_offs
+blit_DMAC_SND_SEL		:=	blit_DMAC + DMAC_SND_SEL_offs
+blit_DMAC_SND_MA_VOL		:=	blit_DMAC + DMAC_SND_MA_VOL_offs
+
+blit_DMAC_DMA_CTL		:=	blit_DMAC + DMAC_DMA_CTL_offs
+blit_DMAC_DMA_SRC_ADDR		:=	blit_DMAC + DMAC_DMA_SRC_ADDR_offs
+blit_DMAC_DMA_DEST_ADDR		:=	blit_DMAC + DMAC_DMA_DEST_ADDR_offs
+blit_DMAC_DMA_COUNT		:=	blit_DMAC + DMAC_DMA_COUNT_offs
+blit_DMAC_DMA_DATA		:=	blit_DMAC + DMAC_DMA_DATA_offs
+blit_DMAC_DMA_CTL2		:=	blit_DMAC + DMAC_DMA_CTL2_offs
+blit_DMAC_DMA_PAUSE		:=	blit_DMAC + DMAC_DMA_PAUSE_offs
+blit_DMAC_DMA_SEL		:=	blit_DMAC + DMAC_DMA_SEL_offs
+
+
 
 JIM_DEVNO_HOG1MPAULA		:=	$D0
 JIM_DEVNO_BLITTER		:=	$D1
