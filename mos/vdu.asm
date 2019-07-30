@@ -211,8 +211,98 @@ mos_OSBYTE_20
 		; TODO - not sure where to store expoded chars and whether to pre-reserve memory
 		rts
 
-mos_VDU_20	move.b	#$A5,vduvar_TXT_BACK
+;; ----------------------------------------------------------------------------
+vdu20_mo7	move.b	#$20,vduvar_TXT_BACK		;	C833
+		rts					;	C838
+
+;; ----------------------------------------------------------------------------
+;; VDU 20	  Restore default colours	  0 parameters;	 
+mos_VDU_20
+		clr.b	vduvar_TXT_FORE			; this is on an odd byte so need byte access
+		clr.l	vduvar_TXT_BACK			; clear all colours (6 bytes)
+		clr.b	vduvar_GRA_PLOT_BACK	
+		move.b	vduvar_COL_COUNT_MINUS1,D1	; number of logical colours less 1
+		beq	vdu20_mo7			; if none its MODE 7 so C833
+		moveq	#-1,D0				; A=&FF
+		cmp.b	#$0F,D1				; if not mode 2 (16 colours)
+		bne	LC850				; goto C850
+		moveq	#$3F,D0				;else A=&3
+LC850		move.b	D0,vduvar_TXT_FORE		;foreground text colour
+		move.b	D0,vduvar_GRA_FORE		;foreground graphics colour
+		eori.b	#$FF,D0				;invert A 
+		move.b	D0,dp_vdu_txtcolourOR		;text colour byte to be orred or EORed into memory
+		move.b	D0,dp_vdu_txtcolourEOR		;text colour byte to be orred or EORed into memory
+		move.b	D1,vduvar_VDU_Q_END - 5		;set first parameter of 5
+		cmp.b	#$03,D1				;if there are 4 colours
+		beq	vdu20_4_colour_mode		;goto C874
+		blo	vdu20_2_colour_mode		;if less there are 2 colours goto C885
+							;else there are 16 colours
+		move.b	D1,vduvar_VDU_Q_END - 4		;set second parameter
+LC868		bsr	mos_VDU_19			;do VDU 19 etc
+		subq.b	#1,vduvar_VDU_Q_END - 4		;decrement first parameter
+		subq.b	#1,vduvar_VDU_Q_END - 5		;and last parameter
+		bpl	LC868	
+		rts					;
+;; ----------------------------------------------------------------------------
+;; 4 colour mode
+vdu20_4_colour_mode
+		move.w	#$07,vduvar_VDU_Q_END - 4	;	note word to clear top bits
+LC879		bsr	mos_VDU_19			;	C879
+		lsr	vduvar_VDU_Q_END - 4		;	C87C
+		subq.b	#1,vduvar_VDU_Q_END - 5		;	C87F
+		bpl	LC879				;	C882
+		rts					;	C884
+; ----------------------------------------------------------------------------
+vdu20_2_colour_mode		
+		move.b	#$07, vduvar_VDU_Q_END- 4	;	C885
+		jsr	mos_VDU_19			;	C887
+		clr.b	vduvar_VDU_Q_END - 4
+		clr.b	vduvar_VDU_Q_END - 5		;	C88C
+; VDU 19   define logical colours		  5 parameters; &31F=first parameter logical colour ; &320=second physical colour 
+mos_VDU_19
+		move.w	SR, -(A7)			; save flags
+		or.w	#$0700,SR			; and disable interrupts
+		move.b	vduvar_VDU_Q_END - 5,D1		; b <= logical colour
+		and.b	vduvar_COL_COUNT_MINUS1,D1	; 
+		
+		move.b	vduvar_VDU_Q_END - 4, D0	; a <= physical colour
+LC89E		andi.b	#$0F,D0				; 
+		lea	vduvar_PALLETTE, A0
+		move.b  D0,0(A0,D1)			; store in saved palette 
+
+		move.b	vduvar_COL_COUNT_MINUS1,D2	; a <= colours - 1
+		move.b	D2,D3
+							;	2 col		4 col		16 col
+LC8AD		roxr.b	#1,D1				; 
+		roxr.b	#1,D2			;
+		bcs	LC8AD				;
+							; b=	$80		$C0		$F0
+		asl.b	#1,D1				; wksp2=X0000000	XX000000	XXXX0000
+							; a <= phys colour
+		or.b	D1,D0				; a <= LLLLPPPP
+		
+
+		clr.b	D1
+LC8BA		cmp	#3,D3				;	C8BB
+		bne	mos_VDU19_sk1			;	C8BC
+		move.b	D0,D2
+		andi.b	#$60,D2				;	C8BE
+		beq	mos_VDU19_sk1			;	C8C0
+		cmp.b	#$60,D2				;	C8C2
+		beq	mos_VDU19_sk1			;	C8C4
+		eori.b	#$60,D0				;	C8C7
+		bra	mos_VDU19_sk1			;	C8C9
+mos_VDU19_sk1
+		jsr	write_pallette_reg				; LC8CC
+		add.b	vduvar_COL_COUNT_MINUS1,D1	;	C8D1
+		addq.b	#1,D1
+		add.b	#$10,D0				;	C8D6
+		cmp.b	#$10,D1				;	C8D9
+		blo	LC8BA				;	C8DB
+
+		move.w	(A7)+,SR			;	C8DE	ENDIF
 		rts
+
 mos_VDU_26	rts
 mos_set_cursor_D0
 		move.w	D0,vduvar_6845_CURSOR_ADDR		;	C9F6
@@ -255,6 +345,25 @@ mos_VIDPROC_set_CTL
 		move.w	(A7)+,SR			;get back status
 		rts					;and return
 
+*************************************************************************
+*                                                                       *
+*        OSBYTE &9B (155) write to pallette register                    *       
+*                                                                       *
+*************************************************************************
+                ;entry X contains value to write
+
+mos_OSBYTE_155
+		move.b	dp_mos_OSBW_X,D0		;	EA10
+write_pallette_reg
+		move	SR,-(A7)			;	EA13
+		or.w	#$0700,SR			;	EA14
+		move.b	D0,-(A7)
+		eori.b	#$07,D0				;	EA11
+		move.b	D0,sysvar_VIDPROC_PAL_COPY	;	EA15
+		move.b	D0,sheila_VIDULA_pal		;	EA18
+		move.b	(A7)+,D0
+		move	(A7)+,SR			;	EA1B
+		rts
 
 mos_poke_SYSVIA_orb
 		move.w	SR,-(A7)
