@@ -4,6 +4,7 @@
 		include "oslib.inc"
 		include "hardware.inc"
 		include "kernel_defs.inc"
+		include "deice.inc"
 
 
 		xdef 		handle_res
@@ -46,6 +47,15 @@
 
 		SECTION "code"
 
+test_sub:	clr.l	D0
+		clr.l	D0
+		clr.l	D0
+		moveq	#0,D0
+		moveq	#0,D0
+		moveq	#0,D0
+		rts
+test_sub_end:
+
 handle_res:	
 		; copy rom vectors to low memory
 		lea	(romv_start,PC),A6
@@ -58,7 +68,16 @@ handle_res:
 		move.b	#JIM_DEVNO_BLITTER,(fred_JIM_DEVNO)
 		clr.b	(fred_JIM_DEVNO)
 
+		bsr	deice_init
 
+		; test deice_print
+		lea.l	test_d,A0
+.lp2		move.b	(A0)+,D0
+		beq	.sk
+		bsr	deice_print
+		bra	.lp2
+.sk		moveq	#13,D0
+		bsr	deice_print
 
 		bsr	cls
 		lea	(test_d,PC),A0
@@ -74,11 +93,32 @@ handle_res:
 		clr.b	oswksp_VDU_VERTADJ
 
 
+		; test run from sys mem
+		lea.l	test_sub,A0
+		lea.l	$FF2000,A1
+		moveq	#test_sub_end-test_sub-1,D0
+.lp3		move.b	(A0)+,(A1)+
+		dbf	D0,.lp3
+		jsr	$FF2000
+		jsr	test_sub
+
+
 
 		moveq	#0,D0				; init mode 0
 		bsr	mos_VDU_init
 
-there:		trap	#$F
+		ori.w	#$8000,SR
+
+there:		move.l	#$01020304, D0
+		move.l	#$05060708, D1
+		move.l	#$DEADBEEF, D2
+		move.l	#$FACEFACE, D3
+		move.l	#$98765432, D4
+		move.l	#$ABCDEF01, D5
+		move.l	#$99887766, D6
+
+
+		trap	#0
 
 		
 
@@ -189,8 +229,8 @@ handle_priv:
 		bra	intmsg
 handle_trace:
 		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_trace,PC),A0
-		bra	intmsg
+		moveq	#DEICE_STATE_TRACE,D0
+		bra	deice_enter
 handle_opA:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_opA,PC),A0
@@ -229,12 +269,12 @@ handle_int_6:
 		bra	intmsg
 handle_int_7:
 		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_7,PC),A0
-		bra	intmsg
+		moveq	#DEICE_STATE_IRQ_x+7,D0
+		bra	deice_enter
 handle_trap_0:
 		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_trap_0,PC),A0
-		bra	intmsg
+		moveq	#DEICE_STATE_BP,D0
+		bra	deice_enter
 handle_trap_1:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_trap_1,PC),A0

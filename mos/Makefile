@@ -3,7 +3,7 @@ ASFLAGS=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 
 TARGETS=mos68k.bin
 
-OBJS=font.o vdu.o kernel.o romheader.o romvectors.o
+OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o
 OBJS2=$(addprefix obj/, $(OBJS))
 
 all:: $(TARGETS)
