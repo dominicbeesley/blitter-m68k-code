@@ -79,7 +79,6 @@ handle_res:
 .sk		moveq	#13,D0
 		bsr	deice_print
 
-		bsr	cls
 		move.l	#$FACEBEEF,D0
 		move.l	#$BEEFDEAD,D1
 		move.l	#$DEADBEEF,D2
@@ -113,8 +112,14 @@ handle_res:
 		jsr	test_sub
 
 
-		moveq	#0,D0				; init mode 0
+		moveq	#2,D0				; init mode 0
 		bsr	mos_VDU_init
+
+
+		lea.l	$FFFF5000,A0
+		move.w	#$FF,D0
+.lll3		move.b	D0,(A0)+
+		dbf	D0,.lll3
 
 		lea.l	test_d,A0
 .lll2		move.b	(A0)+,D0
@@ -139,18 +144,6 @@ there:		move.l	#$01020304, D0
 
 		
 
-cls:		movea.l	#screen_start,A0
-		clr.b	col_ctr
-		move.l 	A0,(screen_ptr).w
-		movea.l #screen_start+screen_len,A0
-		move.w	#(screen_len/16)-1,D0
-		moveq	#0,D1
-		moveq	#0,D2
-		moveq	#0,D3
-		moveq	#0,D4
-.lp:		movem.l	D1-D4,-(A0)
-		dbf	D0,.lp
-		rts
 
 PrHex_l:	swap	D0
 		jsr	PrHex_w
@@ -169,54 +162,17 @@ PrHex_nyb:	move.b	D0,-(A7)
 		bls	.dig
 		addq.b	#'A'-'9'-1,D0
 .dig:		add.b	#'0',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		move.b	(A7)+,D0
 		rts
 
 
 PrString:	move.b	(A0)+,D0
 		beq.b	.ex
-		bsr.b	tmp_OSWRCH
+		bsr	deice_print
 		bra	PrString
 .ex:		rts
 
-tmp_OSWRCH:
-		movem.l	D0-D1/A0-A1,-(A7)
-		clr.w	D1
-		move.b	D0,D1
-		sub.b	#32,D1
-		bcs.b	.ctl
-		asl.w	#3,D1
-		movea.l	(screen_ptr).w,A1
-		lea.l	(font,PC),A0		
-		lea.l	0(A0,D1.W),A0
-		move.l	(A0)+,D1
-		move.l	D1,(A1)+
-		move.l	(A0)+,D1
-		move.l	D1,(A1)+
-		move.l	A1,(screen_ptr).w
-		add.b	#1,(col_ctr)
-		cmp.b	#80,(col_ctr)
-		bne	.ex
-		clr.b	(col_ctr)
-.ex:		movem.l	(A7)+,D0-D1/A0-A1
-		rts
-.ctl:		cmp.b	#13,D0
-		bne	.ex
-		; next line
-		clr.w	D1
-		move.b	(col_ctr),D1
-		asl.w	#3,D1
-		neg.w	D1
-		add.w	#640,D1
-		move.l  (screen_ptr),A1
-		lea.l	0(A1,D1),A1
-		cmpa.l	#screen_end,A1
-		blo	.s1
-		suba.l	screen_len,A1
-.s1		move.l	A1,(screen_ptr)
-		clr.b	(col_ctr)
-		bra	.ex
 
 
 OSWRCH
@@ -368,45 +324,45 @@ intmsg
 		bsr	PrString
 
 		moveq	#13,D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		clr.b	D2
 		clr.w	D3
 intmsg_lp0:	
 		moveq	#'D',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		move.b	D2,D0
 		add.b	#'0',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'=',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#' ',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		move.l	0(A7,D3.w),D0
 		bsr	PrHex_l
 
 		moveq	#' ',D0
-		jsr	tmp_OSWRCH
-		jsr	tmp_OSWRCH
-		jsr	tmp_OSWRCH
+		bsr	deice_print
+		bsr	deice_print
+		bsr	deice_print
 		moveq	#'A',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		move.b	D2,D0
 		add.b	#'0',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		cmp.b	#7,D2
 		beq	.done
 		moveq	#'=',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#' ',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		move.l	32(A7,D3.w),D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		addq.b	#4,D3
 		addq.b	#1,D2
@@ -414,61 +370,61 @@ intmsg_lp0:
 
 .done
 		moveq	#'s',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'=',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 
 		move	A7,D0
 		add.l	#66,D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		moveq	#'A',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'7',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'u',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'=',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		move.l	USP,A0
 		move.l	A0,D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		moveq	#'P',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'C',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'=',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#' ',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 
 		move.l	62(A7),D0
-		jsr	PrHex_l
+		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		moveq	#'S',D0
-		bsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#'=',D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 		moveq	#' ',D0
-		bsr	tmp_OSWRCH
-		bsr	tmp_OSWRCH
+		bsr	deice_print
+		bsr	deice_print
 
 		move.w	60(A7),D0
-		jsr	PrHex_w
+		bsr	PrHex_w
 
 		moveq	#13,D0
-		jsr	tmp_OSWRCH
+		bsr	deice_print
 
 		stop	#$2700
 
@@ -477,7 +433,7 @@ intmsg_lp0:
 
 		
 
-test_d:		dc.b	"Blitter Board 68008", 0
+test_d:		dc.b	"Blitter Board 68008", 17,2,17,129,"one",17,1,17,128,"two",0
 str_addr_err:	dc.b	"address error",0
 str_bus_err:	dc.b	"bus error",0
 str_illegal:	dc.b	"illegal op",0

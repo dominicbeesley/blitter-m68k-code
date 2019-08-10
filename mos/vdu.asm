@@ -13,7 +13,7 @@ mostbl_chardefs := font
 		section "code"
 
 		macro	VDU_JMP_REL
-		dc.w	\1-mos_vdu_jsr-2
+		dc.w	\1-mos_vdu_jmp-2
 		endm	VDU_JMP_REL
 
 		macro   CLC
@@ -87,7 +87,7 @@ mostbl_vdu_entry_points
 		VDU_JMP_REL	mos_VDU_127
 
 mos_vdu_callfb	move.w	vduvar_VDU_VEC_JMP,D1
-mos_vdu_jsr	jsr	(PC,D1)
+mos_vdu_jmp	jmp	(PC,D1)
 
 mostbl_vdu_q_lengths	; 2's complement
 		dc.b	$00,$FF,$00,$00,$00,$00,$00,$00	; 0-7
@@ -205,10 +205,10 @@ x_read_linkaddresses_and_number_of_parameters2
 		andi.w	#$00FF,D0			; clear top of D0
 		lea	mostbl_vdu_q_lengths,A0		;	C4EF
 		move.b	0(A0,D0),D1
-		move.w	D0,D1
-		asl.w	D1
+		move.w	D0,D2
+		asl.w	#1,D2
 		lea	mostbl_vdu_entry_points,A0
-		move.w	0(A0,D1),A1
+		move.w	0(A0,D2),A1
 		move.w	A1,vduvar_VDU_VEC_JMP
 		move.b	D1,sysvar_VDU_Q_LEN
 		beq	x_vdu_no_q
@@ -437,6 +437,7 @@ mos_VDU_9						; LC664
 ;; ----------------------------------------------------------------------------
 ;; : text cursor down and right
 x_text_cursor_down_and_right
+		ori #$8000,SR	;TRACE
 		move.b	vduvar_TXT_WINDOW_LEFT,vduvar_TXT_CUR_X
 ;; : text cursor down
 x_text_cursor_down
@@ -602,7 +603,8 @@ mos_VDU_17	; COLOUR
 ;; GCOL; parameters in 323,322 
 mos_VDU_18	; GCOL
 		moveq	#$02,D1
-LC7FF		move.b	vduvar_VDU_Q_END - 1,D0
+LC7FF		clr.w	D0
+		move.b	vduvar_VDU_Q_END - 1,D0
 		bpl	LC805
 		addq.b	#1,D1
 LC805		and.b	vduvar_COL_COUNT_MINUS1,D0
@@ -635,6 +637,7 @@ vdu20_mo7	move.b	#$20,vduvar_TXT_BACK		;	C833
 ;; ----------------------------------------------------------------------------
 ;; VDU 20	  Restore default colours	  0 parameters;	 
 mos_VDU_20
+
 		clr.b	vduvar_TXT_FORE			; this is on an odd byte so need byte access
 		clr.l	vduvar_TXT_BACK			; clear all colours (6 bytes)
 		clr.b	vduvar_GRA_PLOT_BACK	
@@ -663,9 +666,11 @@ LC868		bsr	mos_VDU_19			;do VDU 19 etc
 ;; ----------------------------------------------------------------------------
 ;; 4 colour mode
 vdu20_4_colour_mode
-		move.w	#$07,vduvar_VDU_Q_END - 4	;	note word to clear top bits
+		move.b	#$07,vduvar_VDU_Q_END - 4	;	note word to clear top bits
 LC879		bsr	mos_VDU_19			;	C879
-		lsr	vduvar_VDU_Q_END - 4		;	C87C
+		move.b	vduvar_VDU_Q_END - 4,D0		;	C87C
+		lsr.b	#1,D0
+		move.b	D0,vduvar_VDU_Q_END - 4
 		subq.b	#1,vduvar_VDU_Q_END - 5		;	C87F
 		bpl	LC879				;	C882
 		rts					;	C884
@@ -677,8 +682,11 @@ vdu20_2_colour_mode
 		clr.b	vduvar_VDU_Q_END - 5		;	C88C
 ; VDU 19   define logical colours		  5 parameters; &31F=first parameter logical colour ; &320=second physical colour 
 mos_VDU_19
+
+
 		move.w	SR, -(A7)			; save flags
 		or.w	#$0700,SR			; and disable interrupts
+
 		move.b	vduvar_VDU_Q_END - 5,D1		; b <= logical colour
 		and.b	vduvar_COL_COUNT_MINUS1,D1	; 
 		
@@ -688,37 +696,38 @@ LC89E		andi.b	#$0F,D0				;
 		move.b  D0,0(A0,D1)			; store in saved palette 
 
 		move.b	vduvar_COL_COUNT_MINUS1,D2	; a <= colours - 1
-		move.b	D2,D3
 							;	2 col		4 col		16 col
 LC8AD		roxr.b	#1,D1				; 
 		roxr.b	#1,D2			;
 		bcs	LC8AD				;
 							; b=	$80		$C0		$F0
-		asl.b	#1,D1				; wksp2=X0000000	XX000000	XXXX0000
+		asl.b	#1,D2				; wksp2=X0000000	XX000000	XXXX0000
 							; a <= phys colour
-		or.b	D1,D0				; a <= LLLLPPPP
-		
+		or.b	D0,D2				; a <= LLLLPPPP
+		move.b	D2,D0
 
 		clr.b	D1
-LC8BA		cmp	#3,D3				;	C8BB
+LC8BA		cmp.b	#3,vduvar_COL_COUNT_MINUS1	;	C8BB
 		bne	mos_VDU19_sk1			;	C8BC
-		move.b	D0,D2
-		andi.b	#$60,D2				;	C8BE
-		beq	mos_VDU19_sk1			;	C8C0
-		cmp.b	#$60,D2				;	C8C2
-		beq	mos_VDU19_sk1			;	C8C4
-		eori.b	#$60,D0				;	C8C7
-		bra	mos_VDU19_sk1			;	C8C9
+		and.b	#$60,D0				;	C8BE
+		beq	LC8CB				;	C8C0
+		cmp.b	#$60,D0				;	C8C2
+		beq	LC8CB				;	C8C4
+		move.b	D2,D0
+		eor.b	#$60,D0				;	C8C7
+		bne	mos_VDU19_sk1			;	C8C9
+LC8CB		move.b	D2,D0		
 mos_VDU19_sk1
 		bsr	write_pallette_reg				; LC8CC
 		add.b	vduvar_COL_COUNT_MINUS1,D1	;	C8D1
 		addq.b	#1,D1
+		move.b	D2,D0
 		add.b	#$10,D0				;	C8D6
+		move.b	D0,D2
 		cmp.b	#$10,D1				;	C8D9
 		blo	LC8BA				;	C8DB
 
-		move.w	(A7)+,SR			;	C8DE	ENDIF
-		rts
+		rte
 
 ;; ----------------------------------------------------------------------------
 ;; OSWORD 12    WRITE PALLETTE; on entry X=&F0:Y=&F1:YX points to parameter block ; byte 0 = logical colour;  byte 1 physical colour; bytes 2-4=0 
@@ -1462,15 +1471,18 @@ x_set_up_displayaddress
 		asl.b	#1,D1
 		move.w	tbl68_size_bytes_pre_row(PC,D1),D1
 		mulu	D0,D1
+		add.w	vduvar_6845_SCREEN_START,D1
 		move.w	D1,zp_vdu_top_scanline
 		move.b	vduvar_BYTES_PER_CHAR,D0
 		clr.w	D1
 		move.b	vduvar_TXT_CUR_X,D1
 		mulu	D1,D0
 		add.w	zp_vdu_top_scanline,D0
+		move.w	D0,vduvar_6845_CURSOR_ADDR
 		bpl	.s1
 		bsr	x68_sub_screen_size_d0
-.s1		rts
+.s1		move.w	D0,zp_vdu_top_scanline
+		rts
 
 ; 68API - changed to expect A1 register to contain pointer to character bitmap?
 x_vdu5_render_char			; foreground graphics colour
@@ -1579,14 +1591,14 @@ render_char_4colour
 		clr.w	D2
 .l1		move.b	(A1,D3),D2
 		lsr.b	#4,D2				; get bottom half of font bitmap row
-		move.b	(A2,D0),D2			; convert to mo.1 bitmask		
+		move.b	(A2,D2),D2			; convert to mo.1 bitmask		
 		or.b	D0,D2				
 		eor.b	D1,D2				; apply colour
 		move.b	D2,(A0,D3)			; store in screen
 
 		move.b	(A1,D3),D2
 		and.b	#$0F,D2				; get next 4 pixels
-		move.b	(A2,D0),D2			; convert to mo.1 bitmask
+		move.b	(A2,D2),D2			; convert to mo.1 bitmask
 		or.b	D0,D2				
 		eor.b	D1,D2				; apply colour
 		move.b	D2,8(A0,D3)			; store in screen
@@ -1594,24 +1606,25 @@ render_char_4colour
 LD017rts	rts
 
 ;; ----------------------------------------------------------------------------
-LD018		sub.b	#$21,D3
-		bmi	LD017rts			;	D01B
-		bra	rc16csk1
 render_char_16colour
+		movem.w	D4/D5,-(A7)
+		clr.w	D5
 		lea.l	mostbl_byte_mask_16col,A2
-rc16csk1	move.w	#$100,D2			; set bit above bitmask for loop counter
-		move.b	(A1,D3),D2			; get bitmask		
-LD023		asl.w	#2,D2	
-		beq	LD018			
-		move.b	D2,zp_vdu_wksp+2			; save
-		and.b	#$03,D2
-		move.b	(A2,D2),D2
-		or.b	D0,D2
-		eor.b	D1,D2
-		move.b	D2,(A0,D3)
-		move.b	zp_vdu_wksp+2,D2
+rc16csk1	move.w	#3,D4				; set bit above bitmask for loop counter
+		move.b	(A1,D3),D2			; get bitmask	
+LD023		rol.b	#2,D2
+		move.b	D2,D5				; save
+		and.b	#$03,D5
+		move.b	(A2,D5),D5
+		or.b	D0,D5
+		eor.b	D1,D5
+		move.b	D5,(A0,D3)
 		addq.b	#$08,D3
-		bra	LD023
+		dbf	D4,LD023
+LD018		sub.b	#$21,D3
+		bpl	rc16csk1			;	D01B
+		movem.w	(A7)+,D4/D5
+		rts
 
 ;API68 - returns address in A1
 x_calc_pattern_addr_for_given_char_API68 
@@ -3062,8 +3075,7 @@ write_pallette_reg
 		move.b	D0,sysvar_VIDPROC_PAL_COPY	;	EA15
 		move.b	D0,sheila_VIDULA_pal		;	EA18
 		move.b	(A7)+,D0
-		move	(A7)+,SR			;	EA1B
-		rts
+		rte
 
 mos_poke_SYSVIA_orb
 		move.w	SR,-(A7)

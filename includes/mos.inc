@@ -236,8 +236,11 @@ vduvar_GRA_FORE				:= $0359	; Foreground graphics colour
 vduvar_GRA_BACK				:= $035A	; Background graphics colour
 vduvar_GRA_PLOT_FORE			:= $035B	; Foreground plot mode
 vduvar_GRA_PLOT_BACK			:= $035C	; Background plot mode
-vduvar_VDU_VEC_JMP			:= $035D	; General VDU jump vector
-vduvar_CUR_START_PREV			:= $035F	; Cursor start register previous setting
+
+; swapped these for alignment reasons
+vduvar_CUR_START_PREV			:= $035D	; Cursor start register previous setting
+vduvar_VDU_VEC_JMP			:= $035E	; General VDU jump vector (offset in 68k)
+
 vduvar_COL_COUNT_MINUS1			:= $0360	; Number logical colours -1
 vduvar_PIXELS_PER_BYTE_MINUS1		:= $0361	; Pixels per byte -1 (zero if text only mode)
 vduvar_LEFTMOST_PIX_MASK		:= $0362	; Leftmost pixel colour mask
