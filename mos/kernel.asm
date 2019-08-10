@@ -80,8 +80,6 @@ handle_res:
 		bsr	deice_print
 
 		bsr	cls
-		lea	(test_d,PC),A0
-		bsr	PrString
 		move.l	#$FACEBEEF,D0
 		move.l	#$BEEFDEAD,D1
 		move.l	#$DEADBEEF,D2
@@ -118,12 +116,15 @@ handle_res:
 		moveq	#0,D0				; init mode 0
 		bsr	mos_VDU_init
 
-		moveq	#'A',D0
+		lea.l	test_d,A0
+.lll2		move.b	(A0)+,D0
+		beq	.sss1
 		jsr	OSWRCH
+		bra	.lll2
+.sss1
 
 
 
-		ori.w	#$8000,SR
 
 there:		move.l	#$01020304, D0
 		move.l	#$05060708, D1
@@ -134,7 +135,7 @@ there:		move.l	#$01020304, D0
 		move.l	#$99887766, D6
 
 
-		trap	#0
+		trap	#9
 
 		
 
@@ -210,7 +211,10 @@ tmp_OSWRCH:
 		add.w	#640,D1
 		move.l  (screen_ptr),A1
 		lea.l	0(A1,D1),A1
-		move.l	A1,(screen_ptr)
+		cmpa.l	#screen_end,A1
+		blo	.s1
+		suba.l	screen_len,A1
+.s1		move.l	A1,(screen_ptr)
 		clr.b	(col_ctr)
 		bra	.ex
 

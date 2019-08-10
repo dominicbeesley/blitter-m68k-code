@@ -221,7 +221,7 @@ LC511RTS	CLC
 ;; B, sysvar_VDU_Q_LEN are 2's complement of number of parameters. **{NETV=>vduvar_Q+5-$100}
 mos_VDU_WRCH_add_to_Q
 		ext.w	D1
-		move.l	#vduvar_VDU_Q_END,A0
+		lea.l	vduvar_VDU_Q_END,A0
 		move.b	D0,(A0,D1)			;	C512
 		addq.b	#1,D1				;	C515
 		move.b	D1,sysvar_VDU_Q_LEN		;	C516
@@ -283,8 +283,8 @@ x_cursor_editing_routines
 x_start_curs_edit					;LC568
 		move.w	SR,-(A7)
 		move.w	D0,-(A7)
-		move.w	#$318,A0			;	C56A
-		move.w	#$364,A1			;	C56C
+		lea.l	vduvar_TXT_CUR_X,A0		;	C56A
+		lea.l	vduvar_TEXT_IN_CUR_X,A1			;	C56C
 		bsr	x_exchange_2atY_with_2atX	;	C56E
 		bsr	x_set_up_displayaddress		;	C571
 		move.w	zp_vdu_top_scanline,A0
@@ -394,13 +394,13 @@ x_cursor_down_with_graphics_in_use
 		bsr	x_Check_window_limits		;	C623
 		clr.w	D1
 		move.b	zp_vdu_wksp+1,D1		;	C626
-		move.l	#vduvar_GRA_CUR_INT,A0
+		lea.l	vduvar_GRA_CUR_INT,A0
 		subq.w	#$08,(A0,D1)			;	subtract 8 to move back/up one char
 LC636		tst.b	zp_vdu_wksp			;	get back result from x_Check_window_limits
 		bne	jmp_cal_ext_coors				;	C638
 		bsr	x_Check_window_limits		;	C63A
 		beq	jmp_cal_ext_coors				;	C63D
-		move.l	#vduvar_GRA_WINDOW_RIGHT,A1
+		lea.l	vduvar_GRA_WINDOW_RIGHT,A1
 		clr.w	D1
 		move.b	zp_vdu_wksp+1,D1
 		;TODO check this thorougly
@@ -470,7 +470,7 @@ x_graphic_cursor_up_Beq2
 		bsr	x_Check_window_limits		;	C6B8
 		clr.w	D1
 		move.b	zp_vdu_wksp+1,D1		;	C6BB
-		move.l	#vduvar_GRA_CUR_INT,A0
+		lea.l	vduvar_GRA_CUR_INT,A0
 		addq.w	#8,(A0,D1)
 LC6CB		tst.b	zp_vdu_wksp			; get back result from window limits above
 		bne	jmp_cal_ext_coors		;	C6CD
@@ -478,7 +478,7 @@ LC6CB		tst.b	zp_vdu_wksp			; get back result from window limits above
 		beq	jmp_cal_ext_coors		;	C6D2
 		clr.w	D1
 		move.b	zp_vdu_wksp+1,D1		;	C6D4
-		move.l	#vduvar_GRA_WINDOW_LEFT,A1
+		lea.l	vduvar_GRA_WINDOW_LEFT,A1
 		move.w	(A1,D1),(A0,D1)
 		cmp.b	#$01,D1				;	C6D9
 		blo	LC6F5				;	C6DB
@@ -499,14 +499,14 @@ LC6F5		moveq	#$02,D1				;	C6F5
 mos_VDU_28
 		clr.w	D1
 		move.b	vduvar_MODE,D1
-		move.l  #mostbl_vdu_window_bottom+1,A0
+		lea.l  mostbl_vdu_window_bottom+1,A0
 		move.b	vduvar_VDU_Q_END - 3,D0
 		cmp.b	vduvar_VDU_Q_END - 1,D0
 		blo	LC758rts
 		cmp.b	(A0,D1),D0
 		bhi	LC758rts
 		move.b	vduvar_VDU_Q_END - 2,D0
-		move.l	#mostbl_vdu_window_right,A0
+		lea.l	mostbl_vdu_window_right,A0
 		cmp.b	(A0,D1),D0
 		bhi	LC758rts
 		sub.b	vduvar_VDU_Q_END - 4,D0
@@ -559,8 +559,8 @@ mos_VDU_31
 		move.b	D0,vduvar_TXT_CUR_Y
 		bsr	x_check_text_cursor_in_window_setup_display_addr
 		bcc	LC732_set_cursor_position
-LC7A8		move.l	#vduvar_TXT_CUR_X,A0
-		move.l	#vduvar_TEMP_8,A1
+LC7A8		lea.l	vduvar_TXT_CUR_X,A0
+		lea.l	vduvar_TEMP_8,A1
 		bra	x_exchange_2atY_with_2atX
 ;; ----------------------------------------------------------------------------
 ;; VDU  13	  Carriage  Return	  0 parameters
@@ -586,8 +586,8 @@ mos_VDU_16
 		sub.b	vduvar_GRA_WINDOW_BOTTOM + 1,D0		; graphics window bottom lo
 		addq	#1,D0					; increment
 		move.b	D0,vduvar_GRA_WKSP			; and store in workspace (this is line count)
-.s1		move.l	#vduvar_TEMP_8 + 4,A0			; right
-		move.l	#vduvar_TEMP_8,A1			; left
+.s1		lea.l	vduvar_TEMP_8 + 4,A0			; right
+		lea.l	vduvar_TEMP_8,A1			; left
 		bsr	x_vdu_clear_gra_line_newAPI		; clear line
 		subq.w	#1,vduvar_TEMP_8 + 6
 		subq.b	#1,vduvar_GRA_WKSP			; decrement line count
@@ -611,9 +611,9 @@ LC805		and.b	vduvar_COL_COUNT_MINUS1,D0
 		beq	LC82B
 		and.b	#$07,D0
 		add.b	zp_vdu_wksp,D0
-		move.l	#mostbl_2_colour_pixmasks-1,A0
+		lea.l	mostbl_2_colour_pixmasks-1,A0
 		move.b	(A0,D0),D0
-		move.l	#vduvar_TXT_FORE,A1
+		lea.l	vduvar_TXT_FORE,A1
 		move.b	D0,(A1,D1)
 		cmp.b	#$02,D1
 		bhs	LC82C
@@ -625,7 +625,7 @@ LC805		and.b	vduvar_COL_COUNT_MINUS1,D0
 		move.b	D0,zp_vdu_txtcolourOR
 LC82B		rts
 LC82C		
-		move.l	#vduvar_GRA_PLOT_FORE-2,A1
+		lea.l	vduvar_GRA_PLOT_FORE-2,A1
 		move.b	vduvar_VDU_Q_END - 2,(A1,D1)
 		rts
 ;; ----------------------------------------------------------------------------
@@ -872,16 +872,14 @@ LC9B3		move.w	D0,vduvar_6845_SCREEN_START
 
 ;; VDU 26  set default windows		  0 parameters
 mos_VDU_26							; LC9BD
-		ori	#$8000,SR			; start trace here
-
 		clr.w	D0
 		moveq	#$2C,D1
-		move.l	#vduvar_GRA_WINDOW_LEFT,A0
+		lea.l	vduvar_GRA_WINDOW_LEFT,A0
 LC9C1		move.b	D0,(A0,D1)
 		dbf	D1,LC9C1						;	C9C4
 		clr.w	D1
 		move.b	vduvar_MODE,D1						;	C9C7
-		move.l	mostbl_vdu_window_right,A0				;
+		lea.l	mostbl_vdu_window_right,A0				;
 		move.b	(A0,D1),D0						; text window right hand margin maximum
 		move.b	D0,vduvar_TXT_WINDOW_RIGHT				; text window right
 		bsr	LCA88_newAPI						; calculate number of bytes in a line
@@ -903,7 +901,7 @@ mos_set_cursor_X
 		move	D0,A0
 x_set_cursor_position_X
 		move.w	A0,zp_vdu_top_scanline
-		move.w	vduvar_6845_CURSOR_ADDR,D0
+		move.w	vduvar_6845_CURSOR_ADDR,A0
 		moveq	#$0E,D1
 x_set_6845_screenstart_from_X			; LCA0E
 		move.w	A0,D0
@@ -916,10 +914,13 @@ LCA27
 		eor.w	#$20,D0				;	CA29
 mos_set_6845_regD1toD0_16
 		ror.w	#8,D0
-		bsr	mos_set_6845_regD1toD0
+		move.b	D1,sheila_CRTC_reg
+		move.b	D0,sheila_CRTC_rw
 		ror.w	#8,D0
 		addq.b	#1,D1
-		bra	mos_set_6845_regD1toD0		
+		move.b	D1,sheila_CRTC_reg
+		move.b	D0,sheila_CRTC_rw
+		rts
 
 db_endian_vdu_q_swap_68API
 		***********************************************
@@ -933,7 +934,7 @@ db_endian_vdu_q_swap_68API
 		* Carried over from 6x09 port - not sure      *
 		* assumes aligned VDU_Q			      *
 		***********************************************
-		move.l	#vduvar_VDU_Q_END,A0
+		lea.l	vduvar_VDU_Q_END,A0
 .s1		move.w	-(A0),D0
 		ror.w	#8,D0
 		move.w	D0,(A0)
@@ -956,14 +957,14 @@ vudvar_TMP_XY		equ	vduvar_TEMP_8 + 4
 
 
 		bsr	x_exchange_310_with_328		; save current cursor value at vduvar_TEMP_8
-		move.l	#vduvar_VDU_Q_24_LEFT,A0
-		move.l	#vudvar_TMP_XY,A1
+		lea.l	vduvar_VDU_Q_24_LEFT,A0
+		lea.l	vudvar_TMP_XY,A1
 		bsr	x_coords_to_width_height	; calculate new width/height at TMP_XY
 		or.w	vudvar_TMP_XY,D0		; D0 already contains height, or width
 		bmi	x_exchange_310_with_328		; if either negative, quit
-		move.l	#vduvar_VDU_Q_24_RIGHT,A0
+		lea.l	vduvar_VDU_Q_24_RIGHT,A0
 		bsr	x_set_up_and_adjust_coords_atX
-		move.l	#vduvar_VDU_Q_24_LEFT,A0
+		lea.l	vduvar_VDU_Q_24_LEFT,A0
 		bsr	x_set_up_and_adjust_coords_atX
 		move.b	vduvar_VDU_Q_24_BOTTOM,D0
 		or.b	vduvar_VDU_Q_24_TOP,D0
@@ -972,7 +973,7 @@ vudvar_TMP_XY		equ	vduvar_TEMP_8 + 4
 		bne	x_exchange_310_with_328		; if top internal coords > 255
 		clr.w	D1
 		move.b	vduvar_MODE,D1			; screen mode
-		move.l	#mostbl_vdu_window_right,A0
+		lea.l	mostbl_vdu_window_right,A0
 		move.w	vduvar_VDU_Q_24_RIGHT,D0	; right margin 
 		lsr.w	D0
 		lsr.w	D0
@@ -987,8 +988,8 @@ LCA7A		; save updated data
 		move.l	vduvar_VDU_Q_END - 4,vduvar_GRA_WINDOW_LEFT+4
 
 x_exchange_310_with_328
-		move.l	#vduvar_GRA_CUR_EXT,A0		; ==$310
-		move.l	#vduvar_TEMP_8,A1			; ==$328
+		lea.l	vduvar_GRA_CUR_EXT,A0		; ==$310
+		lea.l	vduvar_TEMP_8,A1			; ==$328
 		bra	x_exchange_4atY_with_4atX
 
 ;; ----------------------------------------------------------------------------
@@ -1016,7 +1017,7 @@ mos_VDU_127					; LCAAC
 		bne	LCAC7							;if graphics then CAC7
 		tst.b	vduvar_COL_COUNT_MINUS1					;number of logical colours less 1
 		beq	LCAC2							;if mode 7 CAC2
-		move.l	#mostbl_chardefs,A1
+		lea.l	mostbl_chardefs,A1
 		;;std	zp_vdu_wksp+4						;store in &DF (&DE) now points to C300 SPACE pattern
 		bsr	LCFBF_renderchar2					;display a space
 ;; ----------------------------------------------------------------------------
@@ -1130,19 +1131,21 @@ mos_send6845lp					; LCBB0
 		bsr	mos_VDU_26			; default windows
 
 LCBC1_clear_whole_screen
-		move.l	#$00FF0000,D0			; force bank to FF
+		moveq	#-1,D0				; force bank to FFFF
 		move.b	vduvar_SCREEN_BOTTOM_HIGH,D0
 		asl.w	#8,D0
 		move.w	D0,vduvar_6845_SCREEN_START
 		move.l	D0,A0
+		move.l	D0,-(A7)
 		bsr	mos_set_cursor_X
 		moveq	#$0C,D1
 		bsr	mos_set_6845_regD1toD0_16	;	CBD1
 		clr.w	D0
 		move.b	vduvar_MODE_SIZE,D0		;	CBD7
 		lea	(mostbl_VDU_screensize_h,PC),A1
-		move.b  0(A1,D0.w),D0
+		move.b  (A1,D0.w),D0
 		asl.w	#8,D0
+		move.l	(A7)+,A0
 		adda.w	D0,A0				; point at end of screen and clear down
 		lsr.w	#4,D0				; SZ*256/16
 		subq.w	#1,D0
@@ -1207,7 +1210,7 @@ LCD66		addq.b	#1,vduvar_TEXT_IN_CUR_Y		;	CD66
 		rts					;	CD69
 
 GetTopScanLineAddr
-		move.w	#zp_vdu_top_scanline,A0
+		lea.l	zp_vdu_top_scanline,A0
 		; get a 16 bit address in SYS space have to do this 
 		; as move.w *,A0 sign extends
 		; TODO: shorten this
@@ -1275,15 +1278,15 @@ LCDCE		move.w	zp_vdu_wksp,zp_vdu_top_scanline				; store read pointer at write p
 		dbf	D2,LCDB0
 
 x_exchange_TXT_CUR_with_BITMAP_READ						; LCDDA
-		move.l	#vduvar_TEMP_8,A0
-		move.l	#vduvar_TXT_CUR_X,A1
+		lea.l	vduvar_TEMP_8,A0
+		lea.l	vduvar_TXT_CUR_X,A1
 x_exchange_2atY_with_2atX							; LCDDE
 		moveq	#$02-1,D1						;	CDDE TODO: this is a straigh 16 bit copy do something better?
 		bra	x_exchange_B_atY_with_B_atX_68API			;	CDE0
 x_exg4atGRACURINTwithGRACURINTOLD						; LCDE2
-		move.l	#vduvar_GRA_CUR_INT,A0					;	CDE2
+		lea.l	vduvar_GRA_CUR_INT,A0					;	CDE2
 x_exg4atGRACURINTOLDwithX							; LCDE4
-		move.l	#vduvar_GRA_CUR_INT_OLD,A1				;	CDE4
+		lea.l	vduvar_GRA_CUR_INT_OLD,A1				;	CDE4
 x_exchange_4atY_with_4atX
 		moveq	#$04-1,D1						;	CDE6
 ;; exchange (300/300+A)+Y with (300/300+A)+X
@@ -1394,7 +1397,7 @@ x_clear_a_line
 		bsr	x_set_up_displayaddress
 		move.b	vduvar_TXT_WINDOW_RIGHT,D2
 		sub.b	vduvar_TXT_WINDOW_LEFT,D2
-		move.l	#zp_vdu_top_scanline,A0
+		lea.l	zp_vdu_top_scanline,A0
 		bsr	GetAddrSYS16
 		move.b	vduvar_TXT_BACK,D0
 LCEBF		clr.w	D1
@@ -1514,7 +1517,7 @@ render_logo2
 		move.b	zp_vdu_txtcolourOR,D0
 		move.b	zp_vdu_txtcolourEOR,D1
 
-		move.l	#zp_vdu_top_scanline,A0
+		lea.l	zp_vdu_top_scanline,A0
 		bsr	GetAddrSYS16
 		cmp.b	#3,vduvar_COL_COUNT_MINUS1		;	CFBF
 		beq	render_char_4colour		;	CFCC
@@ -1562,7 +1565,7 @@ x_convert_teletext_characters
 LCFDE		cmp.b	(A0,D1),D0
 		beq	LCFE9				;	CFE1
 		dbf	D1,LCFDE			;	CFE4
-LCFE6		move.l	#zp_vdu_top_scanline,A0
+LCFE6		lea.l	zp_vdu_top_scanline,A0
 		bsr	GetAddrSYS16
 		move.b	D0,(A0)
 		rts					;	CFE8
@@ -1613,7 +1616,7 @@ LD023		asl.w	#2,D2
 ;API68 - returns address in A1
 x_calc_pattern_addr_for_given_char_API68 
 		movem.l	D0,-(A7)
-		andi	#$00FF,D0
+		andi.l	#$00FF,D0
 		asl	#3,D0
 		move.b	D0,zp_vdu_wksp + 5			;a contains "char defs page offset"
 		lsr.w	#8,D0					; get "page"
@@ -1763,7 +1766,7 @@ x_mos_vdu_gra_drawpixels_in_grpixmask					; LD0F0
 		move.b	vduvar_GRA_CUR_CELL_LINE,D1			;	D0F0
 		;; new API check LD0F3 
 x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B 			; LD0F3 
-		move	#zp_vdu_gra_char_cell,A0
+		lea.l	zp_vdu_gra_char_cell,A0
 		bsr	GetAddrSYS16
 		move.b	zp_vdu_grpixmask,D0				;	D0F3
 		and.b	zp_vdu_gracolourOR,D0				;	D0F5
