@@ -1,43 +1,51 @@
 ;	OS Entry points
 
-GSINIT					:=	$FFC2
-GSREAD					:=	$FFC5
-OSRDCH_NV				:=	$FFC8
-OSWRCH_NV				:=	$FFCB
-OSFIND					:=	$FFCE
-OSGBPB					:=	$FFD1
-OSBPUT					:=	$FFD4
-OSBGET					:=	$FFD7
-OSARGS					:=	$FFDA
-OSFILE					:=	$FFDD
-OSRDCH					:=	$FFE0
-OSASCI					:=	$FFE3
-OSNEWL					:=	$FFE7
-OSWRCR					:=	$FFEC
-OSWRCH					:=	$FFEE
-OSWORD					:=	$FFF1
-OSBYTE					:=	$FFF4
-OSCLI					:=	$FFF7
+	macro	OSBYTE
+	trap	#1
+	endm
 
-PRSTRING				:=	$FF9B
-CLICOM					:=	$FFB9
-ERRJMP					:=	$FFBC
-OSINIT					:=	$FFBF
-SCANHEX					:=	$FFA1
-OSQUIT					:=	$FFA7
-PRHEX					:=	$FFAA
-PR2HEX					:=	$FFAD
-USERINT					:=	$FFB0
-PRTEXT					:=	$FFB3
+	macro	OSWORD
+	trap	#2
+	endm
 
-OSRDRM					:=	$FF98	; !!! Different to Beeb !!!
-OSEVEN					:=	$FF9E	; !!! Different to Beeb !!!
-RAWVDU					:=	$FFA3	; !!! Different to Beeb !!!
-
-DEBUGPRINTNEWL				:=	$FF8C
-DEBUGPRINTHEX				:=	$FF8F
-DEBUGPRINTA				:=	$FF92
-DEBUGPRINTX				:=	$FF95
+; GSINIT					:=	$FFC2
+; GSREAD					:=	$FFC5
+; OSRDCH_NV				:=	$FFC8
+; OSWRCH_NV				:=	$FFCB
+; OSFIND					:=	$FFCE
+; OSGBPB					:=	$FFD1
+; OSBPUT					:=	$FFD4
+; OSBGET					:=	$FFD7
+; OSARGS					:=	$FFDA
+; OSFILE					:=	$FFDD
+; OSRDCH					:=	$FFE0
+; OSASCI					:=	$FFE3
+; OSNEWL					:=	$FFE7
+; OSWRCR					:=	$FFEC
+; OSWRCH					:=	$FFEE
+; OSWORD					:=	$FFF1
+; OSBYTE					:=	$FFF4
+; OSCLI					:=	$FFF7
+; 
+; PRSTRING				:=	$FF9B
+; CLICOM					:=	$FFB9
+; ERRJMP					:=	$FFBC
+; OSINIT					:=	$FFBF
+; SCANHEX					:=	$FFA1
+; OSQUIT					:=	$FFA7
+; PRHEX					:=	$FFAA
+; PR2HEX					:=	$FFAD
+; USERINT					:=	$FFB0
+; PRTEXT					:=	$FFB3
+; 
+; OSRDRM					:=	$FF98	; !!! Different to Beeb !!!
+; OSEVEN					:=	$FF9E	; !!! Different to Beeb !!!
+; RAWVDU					:=	$FFA3	; !!! Different to Beeb !!!
+; 
+; DEBUGPRINTNEWL				:=	$FF8C
+; DEBUGPRINTHEX				:=	$FF8F
+; DEBUGPRINTA				:=	$FF92
+; DEBUGPRINTX				:=	$FF95
 
 ;	OS Constants
 OSFILE_LOAD				:= $FF

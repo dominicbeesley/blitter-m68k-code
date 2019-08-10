@@ -88,9 +88,21 @@ handle_res:
 		move.l	#$D0B0D0B0,D3
 		move.w	#$0000,D3
 
-		; boot bodges
+
+		; zero page 2 as per cold reset
+		lea	oswksp_VDU_VERTADJ,A0
+		moveq	#mosvar_SOUND_SEMAPHORE-oswksp_VDU_VERTADJ-1,D1
+.cm0		clr.b	(A0)+
+		dbf	D1,.cm0
+		moveq	#vduvar_GRA_WINDOW-mosvar_SOUND_SEMAPHORE-1,D1
+.cm1		st.b	(A0)+
+		dbf	D1,.cm1
+
+		; boot bodges for not cleared memory faults
 		clr.b	oswksp_VDU_INTERLACE
-		clr.b	oswksp_VDU_VERTADJ
+		st.b	oswksp_VDU_VERTADJ
+		clr.b	sysvar_VDU_Q_LEN		; should be set in buffer flush somewhere early in boot?
+
 
 
 		; test run from sys mem
@@ -103,9 +115,13 @@ handle_res:
 		jsr	test_sub
 
 
-
 		moveq	#0,D0				; init mode 0
 		bsr	mos_VDU_init
+
+		moveq	#'A',D0
+		jsr	OSWRCH
+
+
 
 		ori.w	#$8000,SR
 
@@ -152,18 +168,18 @@ PrHex_nyb:	move.b	D0,-(A7)
 		bls	.dig
 		addq.b	#'A'-'9'-1,D0
 .dig:		add.b	#'0',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		move.b	(A7)+,D0
 		rts
 
 
 PrString:	move.b	(A0)+,D0
 		beq.b	.ex
-		bsr.b	doOSWRCH
+		bsr.b	tmp_OSWRCH
 		bra	PrString
 .ex:		rts
 
-doOSWRCH:
+tmp_OSWRCH:
 		movem.l	D0-D1/A0-A1,-(A7)
 		clr.w	D1
 		move.b	D0,D1
@@ -198,6 +214,12 @@ doOSWRCH:
 		clr.b	(col_ctr)
 		bra	.ex
 
+
+OSWRCH
+		movem.l	D0-D3/A0-A3,-(A7)
+		bsr mos_VDU_WRCH
+		movem.l (A7)+,D0-D3/A0-A3
+		rts
 
 handle_bus_err:
 		movem.l	D0-D7/A0-A6,-(A7)
@@ -342,45 +364,45 @@ intmsg
 		bsr	PrString
 
 		moveq	#13,D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		clr.b	D2
 		clr.w	D3
 intmsg_lp0:	
 		moveq	#'D',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		move.b	D2,D0
 		add.b	#'0',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		moveq	#'=',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		moveq	#' ',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		move.l	0(A7,D3.w),D0
 		bsr	PrHex_l
 
 		moveq	#' ',D0
-		jsr	doOSWRCH
-		jsr	doOSWRCH
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
+		jsr	tmp_OSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#'A',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		move.b	D2,D0
 		add.b	#'0',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		cmp.b	#7,D2
 		beq	.done
 		moveq	#'=',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		moveq	#' ',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		move.l	32(A7,D3.w),D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		addq.b	#4,D3
 		addq.b	#1,D2
@@ -388,61 +410,61 @@ intmsg_lp0:
 
 .done
 		moveq	#'s',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#'=',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 
 		move	A7,D0
 		add.l	#66,D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		moveq	#'A',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#'7',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#'u',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#'=',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		move.l	USP,A0
 		move.l	A0,D0
 		bsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		moveq	#'P',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		moveq	#'C',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		moveq	#'=',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#' ',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 
 		move.l	62(A7),D0
 		jsr	PrHex_l
 
 		moveq	#13,D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		moveq	#'S',D0
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
 		moveq	#'=',D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 		moveq	#' ',D0
-		bsr	doOSWRCH
-		bsr	doOSWRCH
+		bsr	tmp_OSWRCH
+		bsr	tmp_OSWRCH
 
 		move.w	60(A7),D0
 		jsr	PrHex_w
 
 		moveq	#13,D0
-		jsr	doOSWRCH
+		jsr	tmp_OSWRCH
 
 		stop	#$2700
 

@@ -6,6 +6,7 @@
 ;; ported VDU from 6809 mos
 
 		xdef 	mos_VDU_init
+		xdef	mos_VDU_WRCH
 
 mostbl_chardefs := font
 
@@ -31,6 +32,13 @@ mostbl_chardefs := font
 		ori	#$0010,CCR
 		endm	CLC
 
+
+		macro 	TODO
+		trap	#9
+		dc.b	\1
+		dc.b	0
+		align	2
+		endm
 
 
 mostbl_byte_mask_4col
@@ -107,11 +115,6 @@ mostbl_VDU_pix_mask_2colour
 		dc.b	$80,$40,$20,$10,$08,$04,$02	;	C40D
 mostbl_VDU_mode_colours_m1			; - spills into next table
 		dc.b	$01,$03,$0F,$01,$01,$03,$01	 ;	C414
-mostbl_GCOL_options_proc0
-		dc.b	$00
-; GCOL PLOT OPTIONS PROCESSING LOOK UP TABLE
-mostbl_GCOL_options_proc
-		dc.b	$FF,$00,$00,$FF,$FF,$FF,$FF,$00 ;	C41C
 ; 2 COLOUR MODES PARAMETER LOOK UP TABLE
 mostbl_2_colour_pixmasks
 		dc.b	$00,$FF				;	C424
@@ -133,19 +136,15 @@ mostbl_VDU_mode_size				; note first two entries shared by previous tbl
 ; SOUND PITCH OFFSET BY CHANNEL LOOK UP TABLE ???CHECK
 mostbl_SOUND_PITCH_OFFSET_BY_CHANNEL_LOOK_UP_TABLE
 		dc.b	$00,$06,$02			;	C448
-	IF MACH_BEEB
 ; sent direct to orb of SYSVIA dependent on mode_size
 mostbl_VDU_hwscroll_offb1
 		dc.b	$0D,$05,$0D,$05			;	C44B
+		align	1
+mostbl_VDU_bytes_per_row_w
+		dc.w	40,320,640			;	C463 -- note this was just low byte on 6502
 ; sent direct to orb of SYSVIA dependent on mode_size
 mostbl_VDU_hwscroll_offb2
 		dc.b	$04,$04,$0C,$0C,$04		;	C44F
-	ENDIF
-	IF MACH_CHIPKIT
-; new scroll offset table for 6809 hardware offset
-mostbl_VDU_hwscroll_offs
-		dc.b	$06,$08,$0B,$0C,$F;			TODO: mode 7 doesn't work!
-	ENDIF
 ; where to jump to in CLS unwound
 ;;;mostbl_VDU_cls_vecjmp
 ;;;	FDB	cls_Mode_012_entry_point
@@ -157,8 +156,6 @@ mostbl_VDU_screensize_h
 		dc.b	$50,$40,$28,$20,$04		;	C459
 mostbl_VDU_screebot_h
 		dc.b	$30,$40,$58,$60,$7C		;	C45E
-mostbl_VDU_bytes_per_row_w
-		dc.w	40,320,640			;	C463 -- note this was just low byte on 6502
 mostbl_VDU_6845_mode_012
 		dc.b	$7F,$50,$62,$28,$26,$00,$20,$22,$01,$07,$67,$08
 mostbl_VDU_6845_mode_3
@@ -174,6 +171,8 @@ mostbl_VDU_6845_mode_7
 mostbl_TTX_CHAR_CONV
 		dc.b	$23,$5F,$60,$23			; #->_->£->#
 
+
+		align	2
 
 mos_VDU_WRCH						; LC4C0
 		move.b	sysvar_VDU_Q_LEN,D1		; get number of items in VDU queque
@@ -558,7 +557,7 @@ mos_VDU_31
 		move.b	vduvar_VDU_Q_END - 1,D0
 		add.b	vduvar_TXT_WINDOW_TOP,D0
 		move.b	D0,vduvar_TXT_CUR_Y
-		jsr	x_check_text_cursor_in_window_setup_display_addr
+		bsr	x_check_text_cursor_in_window_setup_display_addr
 		bcc	LC732_set_cursor_position
 LC7A8		move.l	#vduvar_TXT_CUR_X,A0
 		move.l	#vduvar_TEMP_8,A1
@@ -566,10 +565,10 @@ LC7A8		move.l	#vduvar_TXT_CUR_X,A0
 ;; ----------------------------------------------------------------------------
 ;; VDU  13	  Carriage  Return	  0 parameters
 mos_VDU_13
-		bsr	x_check_text_cursor_in_use	;	C7AF	
-		bne	x_set_graphics_cursor_to_left_hand_column;	C7B4
+		btst	#VDU_STATUS_B5_VDU5,zp_vdu_txtcolourOR		;	C7AF	
+		bne	x_set_graphics_cursor_to_left_hand_column	;	C7B4
 LC7B7		bsr	x_cursor_to_window_left				;	C7B7
-		bra	x_setup_displayaddress_and_cursor_position				;	C7BA
+		bra	x_setup_displayaddress_and_cursor_position	;	C7BA
 ;; ----------------------------------------------------------------------------
 x_mos_home_CLG						; LC7BD
 		bsr	x_home_graphics_cursor			
@@ -580,10 +579,9 @@ mos_VDU_16
 		beq	LC7F8rts				; if 0 current mode has no graphics so exit
 		move.b	vduvar_GRA_BACK,D0			; Background graphics colour
 		move.b	vduvar_GRA_PLOT_BACK,D1			; background graphics plot mode (GCOL n)
-		bsr	x_set_colour_masks_newAPI		; set graphics byte mask in &D4/5
-		move.l	#vduvar_GRA_WINDOW_LEFT,A0		; graphics window
-		move.l	#vduvar_TEMP_8,A1			; workspace
-		bsr	copy8fromXtoY				; set(300/7+Y) from (300/7+X)
+		bsr	x_set_gra_masks_newAPI			; set graphics byte mask in &D4/5
+		move.l	vduvar_GRA_WINDOW_LEFT,vduvar_TEMP_8	; set(300/7+Y) from (300/7+X)
+		move.l	vduvar_GRA_WINDOW_LEFT+4,vduvar_TEMP_8+4; set(300/7+Y) from (300/7+X)
 		move.b	vduvar_GRA_WINDOW_TOP + 1,D0		; graphics window top lo.
 		sub.b	vduvar_GRA_WINDOW_BOTTOM + 1,D0		; graphics window bottom lo
 		addq	#1,D0					; increment
@@ -789,7 +787,7 @@ x_VDU_EXTENSION
 
 jmp_VDUV						; LC93C
 		;;jmp	[VDUV]				; C93C
-		jmp	mos_VDU_WRCH		; TODO - VECTORS!
+		bra	mos_VDU_WRCH		; TODO - VECTORS!
 
 ;; ----------------------------------------------------------------------------
 ;; set CRT controller
@@ -866,14 +864,16 @@ x_adjust_screen_RAM_addresses_one_line_scroll
 		move.w	vduvar_BYTES_PER_ROW,D0
 		add.w	vduvar_6845_SCREEN_START,D0
 		bpl	LC9B3
-		jsr	x68_sub_screen_size_d0		
+		bsr	x68_sub_screen_size_d0		
 LC9B3		move.w	D0,vduvar_6845_SCREEN_START
 		move.w	D0,A0
 		moveq	#$0C,D0
-		bra	x_set6845_screenstart_from_X
+		bra	x_set_6845_screenstart_from_X
 
 ;; VDU 26  set default windows		  0 parameters
-mos_VDU_26									; LC9BD
+mos_VDU_26							; LC9BD
+		ori	#$8000,SR			; start trace here
+
 		clr.w	D0
 		moveq	#$2C,D1
 		move.l	#vduvar_GRA_WINDOW_LEFT,A0
@@ -884,7 +884,7 @@ LC9C1		move.b	D0,(A0,D1)
 		move.l	mostbl_vdu_window_right,A0				;
 		move.b	(A0,D1),D0						; text window right hand margin maximum
 		move.b	D0,vduvar_TXT_WINDOW_RIGHT				; text window right
-		jsr	LCA88_newAPI						; calculate number of bytes in a line
+		bsr	LCA88_newAPI						; calculate number of bytes in a line
 		move.b	1(A0,D1),vduvar_TXT_WINDOW_BOTTOM			; text window bottom margin maximum
 										; bottom margin
 		move.b	#$03,vduvar_VDU_Q_END - 1				; set as last parameter
@@ -982,9 +982,9 @@ vudvar_TMP_XY		equ	vduvar_TEMP_8 + 4
 		cmp.b	(A0,D1),D0			; text window right hand margin maximum
 		beq	LCA7A				; if equal CA7A
 		bpl	x_exchange_310_with_328		; exchange 310/3 with 328/3
-LCA7A		move.l	#vduvar_GRA_WINDOW_LEFT,A1
-		move.l	#vduvar_VDU_Q_END - 8,A0
-		bsr	copy8fromXtoY			; save updated data
+LCA7A		; save updated data
+		move.l	vduvar_VDU_Q_END - 8,vduvar_GRA_WINDOW_LEFT
+		move.l	vduvar_VDU_Q_END - 4,vduvar_GRA_WINDOW_LEFT+4
 
 x_exchange_310_with_328
 		move.l	#vduvar_GRA_CUR_EXT,A0		; ==$310
@@ -1016,7 +1016,7 @@ mos_VDU_127					; LCAAC
 		bne	LCAC7							;if graphics then CAC7
 		tst.b	vduvar_COL_COUNT_MINUS1					;number of logical colours less 1
 		beq	LCAC2							;if mode 7 CAC2
-		move.w	#mostbl_chardefs,A1
+		move.l	#mostbl_chardefs,A1
 		;;std	zp_vdu_wksp+4						;store in &DF (&DE) now points to C300 SPACE pattern
 		bsr	LCFBF_renderchar2					;display a space
 ;; ----------------------------------------------------------------------------
@@ -1055,7 +1055,7 @@ LCAEA		move.b	zp_vdu_status,D0					;VDU status byte
 		cmp.b	vduvar_TXT_WINDOW_BOTTOM,D0
 		blo	LCB19
 		CLC
-LCB0E		jsr	mos_OSBYTE_118
+LCB0E		bsr	mos_OSBYTE_118
 		SEC
 		bpl	LCB0E
 ;; zero paged mode  counter
@@ -1355,10 +1355,10 @@ x_copy_text_line_window_LCE73
 		move.b	zp_vdu_wksp+1,-(A7)		; save low byte of source pointer
 
 		lea.l	zp_vdu_wksp,A0			; set up pointers from 16 bit vars
-		jsr	GetAddrSYS16
+		bsr	GetAddrSYS16
 		move.l	A0,A1
 		lea.l	zp_vdu_top_scanline,A0
-		jsr	GetAddrSYS16
+		bsr	GetAddrSYS16
 
 		clr.w	D1
 		move.b	vduvar_TXT_WINDOW_RIGHT,D1	; TODO: check we can corrupt D1 here!
@@ -1366,7 +1366,7 @@ x_copy_text_line_window_LCE73
 LCE7F:		clr.w	D2
 		move.b	vduvar_BYTES_PER_CHAR,D2	; TODO: check we can corrupt D2 here!
 		subq.b	#1,D2				;	CE82
-CE83:		move.b	(A1)+,(A0)+			;	CE83
+LCE83:		move.b	(A1)+,(A0)+			;	CE83
 		dbf	D2,LCE83			;	CE88
 
 		move.w	A1,D0
@@ -1390,8 +1390,8 @@ CE83:		move.b	(A1)+,(A0)+			;	CE83
 
 x_clear_a_line
 		move.b	vduvar_TXT_CUR_X,-(A7)		; save text cursor		
-		jsr	x_cursor_to_window_left
-		jsr	x_set_up_displayaddress
+		bsr	x_cursor_to_window_left
+		bsr	x_set_up_displayaddress
 		move.b	vduvar_TXT_WINDOW_RIGHT,D2
 		sub.b	vduvar_TXT_WINDOW_LEFT,D2
 		move.l	#zp_vdu_top_scanline,A0
@@ -1474,7 +1474,7 @@ x_vdu5_render_char			; foreground graphics colour
 		move.l	vduvar_GRA_FORE,D0		; foreground graphics plot mode (GCOL n)
 		move.l	vduvar_GRA_PLOT_FORE,D1		; 
 x_plot_char_gra_mode					; 
-		jsr	x_set_colour_masks_newAPI	; set graphics byte mask in &D4/5
+		bsr	x_set_gra_masks_newAPI		; set graphics byte mask in &D4/5
 		move.l	vduvar_GRA_CUR_INT,vduvar_TEMP_8; copy (324/7) graphics cursor to workspace (328/B)
 		moveq	#7,D0				; row counter
 LCF6B:		move.b	(A1)+,D0			; get pattern byte
@@ -1500,11 +1500,11 @@ x_set_graphics_cursor_to_left_hand_column
 		bra	x_calculate_external_coordinates_from_internal_coordinates
 
 ;; ----------------------------------------------------------------------------
-;; API68 enter with character pointer in A1 register
 render_char
 		tst.b	vduvar_COL_COUNT_MINUS1
 		beq	x_convert_teletext_characters
 		bsr	x_calc_pattern_addr_for_given_char_API68
+;; API68 enter with character pointer in A1 register
 LCFBF_renderchar2
 		btst	#VDU_STATUS_B5_VDU5,zp_vdu_status			
 		bne	x_vdu5_render_char
@@ -1544,13 +1544,13 @@ render_logo2
 		move.l	D2,(A0)+
 		rts					;	CFDB
 render_logox4
-		jsr	render_logox2
+		bsr	render_logox2
 render_logox2
-		jsr	render_logo
+		bsr	render_logo
 render_logo
 		move.l	A1,-(A7)
-		jsr	render_logo2
-		jsr	mos_VDU_9
+		bsr	render_logo2
+		bsr	mos_VDU_9
 		move.l	(A7)+,A1
 		lea.l	8(A1),A1
 		rts
@@ -1610,7 +1610,7 @@ LD023		asl.w	#2,D2
 		addq.b	#$08,D3
 		bra	LD023
 
-;API68 - returns address in A2
+;API68 - returns address in A1
 x_calc_pattern_addr_for_given_char_API68 
 		movem.l	D0,-(A7)
 		andi	#$00FF,D0
@@ -1619,9 +1619,10 @@ x_calc_pattern_addr_for_given_char_API68
 		lsr.w	#8,D0					; get "page"
 		btst	D0,vduvar_EXPLODE_FLAGS			;check if that bit is set in explosion bitmask
 		bne	.x_cpa_sk_exploded			;if it is use that address
-		move.l	#mostbl_chardefs - $100,D0		;space is at 32 remember!
+		asl	#8,D0
+		add.l	#mostbl_chardefs - $100,D0		;space is at 32 remember!
 .s1		move.b	zp_vdu_wksp + 5,D0			;store whole address
-		move.l	D0,A0
+		move.l	D0,A1
 		movem.l	(A7)+,D0
 		rts
 .x_cpa_sk_exploded
@@ -1630,6 +1631,1397 @@ x_calc_pattern_addr_for_given_char_API68
 		move.b	(A1,D0),D0			;	get explode address from table
 		asl.w	#8,D0
 		bra	.s1
+
+;;;; ----------------------------------------------------------------------------
+;;;; PLOT ROUTINES ENTER HERE; 
+;;**************************************************************************
+;;* on entry	
+;;*	ADDRESS		PARAMETER	DESCRIPTION 
+;;*	031F		1		plot type 	vduvar_VDU_Q_END - 5
+;;*	0320/1		2,3		X coordinate	vduvar_VDU_Q_END - 4
+;;*	0322/3		4,5		Y coordinate	vduvar_VDU_Q_END - 2
+;;**************************************************************************
+;;
+;;
+vduvar_VDU_Q_PLT_CODE	:= vduvar_VDU_Q_END - 5
+vduvar_VDU_Q_PLT_X	:= vduvar_VDU_Q_END - 4
+vduvar_VDU_Q_PLT_Y	:= vduvar_VDU_Q_END - 2
+;;
+;;x_PLOT_ROUTINES_ENTER_HERE
+;;
+;;		; swap coordinates endiannes
+;;		ldy	#2
+;;		jsr	db_endian_vdu_q_swap			; - if removed reinstate LDX below!
+;;
+;;;;	ldx	#vduvar_VDU_Q_PLT_X			; X=&20 - DB: already set up by endiannes swap
+;;		jsr	x_set_up_and_adjust_coords_atX_2	; translate xoordinates
+;;		lda	vduvar_VDU_Q_PLT_CODE			; get plot type
+;;		cmpa	#$04					; if its 4
+;;		lbeq	mos_PLOT_MOVE_absolute			; D0D9 move absolute
+;;		ldb	#$05					; Y=5
+;;		anda	#$03					; mask only bits 0 and 1
+;;		beq	LD080					; if result is 0 then its a move (multiple of 8)
+;;		lsra						; else move bit 0 int C
+;;		bcs	x_graphics_colour_wanted		; if set then D078 graphics colour required
+;;		decb						; Y=4
+;;		bra	LD080					; logic inverse colour must be wanted
+;;;; graphics colour wanted
+;;x_graphics_colour_wanted
+;;		jsr	mos_tax					; X=A if A=0 its a foreground colour 1 its background
+;;		ldb	vduvar_GRA_PLOT_FORE,x			; get fore or background graphics PLOT mode
+;;		lda	vduvar_GRA_FORE,x			; get fore or background graphics colour
+;;;;;	tax						; X=A
+;;LD080		jsr	x_set_gra_masks_newAPI		; set up colour masks in D4/5
+;;		lda	vduvar_VDU_Q_PLT_CODE			; get plot type
+;;		lbmi	x_VDU_EXTENSION				; if &80-&FF then D0AB type not implemented
+;;		asla						; bit 7=bit 6
+;;		bpl	x_analyse_first_parameter_in_0to63_range; if bit 6 is 0 then plot type is 0-63 so D0C6
+;;		anda	#$F0					; else mask out lower nybble
+;;		asla						; shift old bit 6 into C bit old 5 into bit 7
+;;		beq	mos_PLOT_A_SINGLE_POINT			; if 0 then type 64-71 was called single point plot
+;;							; goto D0D6
+;;		eora	#$40					; if bit 6 NOT set type &80-&87 fill triangle
+;;		lbeq	mos_PLOT_Fill_triangle_routine		; so D0A8
+;;		pshs	A					; else push A
+;;		jsr	x_copyplotcoordsexttoGRACURINT					; copy 0320/3 to 0324/7 setting XY in current graphics
+;;							; coordinates
+;;		puls	A					; get back A
+;;		eora	#$60					; if BITS 6 and 5 NOT SET type 72-79 lateral fill 
+;;		beq	LD0AE					; so D0AE
+;;		cmpa	#$40					; if type 88-95 horizontal line blanking
+;;		lbne	x_VDU_EXTENSION				; so D0AB
+;;
+;;		lda	#$02					; else A=2
+;;		sta	zp_vdu_wksp+2				; store it
+;;		jmp	plot_filhorz_back_qry			; and jump to D506 type not implemented ??? DB: I think is fill line in background colour!
+;;;; ----------------------------------------------------------------------------
+;;LD0AE		sta	zp_vdu_wksp+2				;	D0AE
+;;		jmp	mos_LATERAL_FILL_ROUTINE		;	D0B0
+;;;; ----------------------------------------------------------------------------
+
+
+mostbl_GCOL_options_proc0
+		dc.b	$00
+; GCOL PLOT OPTIONS PROCESSING LOOK UP TABLE
+mostbl_GCOL_options_proc
+		dc.b	$FF,$00,$00,$FF,$FF,$FF,$FF,$00 ;	C41C
+
+		align 	2
+
+;; :set colour masks; graphics plot mode in B ; colour in A
+* was plot mode in Y, colour in X
+x_set_gra_masks_newAPI
+		and.w	#$00FF,D1
+		movem.w	D0/D2,-(A7)
+		or.b	mostbl_GCOL_options_proc(PC,D1),D0
+		move.b	mostbl_GCOL_options_proc+1(PC,D1),D2
+		eor.b	D2,D0
+		move.b	D0,zp_vdu_gracolourOR
+		move.w	(A7)+,D0
+		or.b	mostbl_GCOL_options_proc0(PC,D1),D0
+		move.b	mostbl_GCOL_options_proc+4(PC,D1),D2
+		eor.b	D2,D0
+		move.b	D0,zp_vdu_gracolourEOR
+		move.w	(A7)+,D2
+		rts
+
+
+;; ----------------------------------------------------------------------------
+;; analyse first parameter in 0-63 range;  
+x_analyse_first_parameter_in_0to63_range
+		asl.b	D0				;shift left again
+		bmi	x_VDU_EXTENSION			;if -ve options are in range 32-63 not implemented
+		asl.b	#2,D0				;shift left twice more
+		bpl	.s1				;if still +ve type is 0-7 or 16-23 so D0D0
+		bsr	x_PLOT_grpixmask_ckbounds	;else display a point
+.s1		bsr	x_mos_draw_line			;perform calculations
+		bra	mos_PLOT_MOVE_absolute		;
+;; ----------------------------------------------------------------------------
+;; PLOT A SINGLE POINT
+mos_PLOT_A_SINGLE_POINT							; LD0D6
+		bsr	x_PLOT_grpixmask_ckbounds			; plot the point
+mos_PLOT_MOVE_absolute							; LD0D9
+		bsr	x_exg4atGRACURINTwithGRACURINTOLD		; save the old cursor
+x_copyplotcoordsexttoGRACURINT						; LD0DC
+		move.l	vduvar_VDU_Q_PLT_X,vduvar_GRA_CUR_INT		;	D0DC
+		rts
+;;x_copyplotcoordsexttoY							; LD0DE
+;;		ldx	#						;	D0DE
+;;		jmp	copy4fromXtoY					;	D0E0
+;; ----------------------------------------------------------------------------
+LD0E3_API68
+		movem.l	D0/A0,-(A7)
+		lea.l	vduvar_GRA_CUR_INT,A0				;	D0E3
+		bsr	x__check_in_window_bounds_setup_screen_addr_atX	;	D0E5
+		beq	x_mos_vdu_gra_drawpixels_in_grpixmask		;	D0E8
+		rts							;	D0EA
+;; ----------------------------------------------------------------------------
+x_PLOT_grpixmask_ckbounds
+		bsr	x__check_in_window_bounds_setup_screen_addr	;	D0EB
+		bne	LD103rts					;	D0EE
+x_mos_vdu_gra_drawpixels_in_grpixmask					; LD0F0
+		move.b	vduvar_GRA_CUR_CELL_LINE,D1			;	D0F0
+		;; new API check LD0F3 
+x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B 			; LD0F3 
+		move	#zp_vdu_gra_char_cell,A0
+		bsr	GetAddrSYS16
+		move.b	zp_vdu_grpixmask,D0				;	D0F3
+		and.b	zp_vdu_gracolourOR,D0				;	D0F5
+		or.b	(A0,D1),D0					;	D0F7
+		move.b	zp_vdu_gracolourEOR,D2				;	D0FB
+		and.b	zp_vdu_grpixmask,D2				;	D0FD
+		eor.b	D2,D0						;	D0FF
+		move.b	D0,(A0,D1)					;	D101
+LD103rts
+		rts							;	D103
+;; ----------------------------------------------------------------------------
+
+x_mos_vdu_gra_drawpixel_whole_byte
+		movem.w	D0/D2,-(A7)					; check if needed
+		lea.l	zp_vdu_gra_char_cell,A0
+		bsr	GetAddrSYS16
+		move.b	(A0,D1),D0					; LD104
+		or.b	zp_vdu_gracolourOR,D0
+		move.b	zp_vdu_gracolourEOR,D2
+		eor.b	D2,D0
+		move.b	D0,(A0,D1)
+		movem.w	(A7)+,D0/D2
+		rts
+
+;; ----------------------------------------------------------------------------
+;; Check window limits;	
+		; returns A = %0000TBRL where any bit means (T)op(B)ottom(R)ight(L)eft bounds
+x_Check_window_limits
+		lea.l	vduvar_GRA_CUR_INT,A0		;	D10D
+x_Check_window_limits_atX
+		clr.b	D0				;	D111
+		lea.l	vduvar_GRA_WINDOW + 2,A1		;	D113 - bottom
+		bsr	x_cursor_and_margins_check	;	D115	; check Y against BOTTOM/TOP
+		asl.b	#2,D0				;	D118
+		lea.l	-2(A0),A0
+		lea.l	-2(A1),A1
+		bsr	x_cursor_and_margins_check	;	D120
+		lea.l	2(A0),A0
+		rts					;	D127
+
+;; ----------------------------------------------------------------------------
+;; cursor and margins check;  
+		; API: X is coords to check
+		; return 1 if (2,X) < (0,Y)
+		; return 2 if (2,X) >=(4,Y)
+		; return is in zp_vdu_wksp which is 0 on entry
+x_cursor_and_margins_check 			
+		move.w	2(A0),D1				;	D128
+		cmp.w	(A1),D1				;	D12B
+		bmi	LD146				;	D134
+		move.w	4(A1),D1			;	D136
+		cmp.w	2(A0),D1			;	D139
+		bpl	LD148				;	D142
+		addq.b	#1,D0				;	D144
+LD146		addq.b	#1,D0				;	D146
+LD148		rts					;	D148
+
+;; ----------------------------------------------------------------------------
+;; set up and adjust positional data
+x_set_up_and_adjust_coords_atX					; LD149
+		moveq	#-1,D0					;A=&FF
+		bne	x_sadjs1				;then &D150
+x_set_up_and_adjust_coords_atX_2				; LD14D
+		move.b	vduvar_VDU_Q_END - 5,D0			;get first parameter in plot;	D14D
+x_sadjs1	move.b	D0,zp_vdu_wksp				;store in &DA
+		lea.l	vduvar_GRA_WINDOW_BOTTOM,A1		;Y=302
+		bsr	x_gra_coord_ext2int			;set up vertical coordinates/2
+		asr.w	2(A0)					;/2 again to convert 1023 to 0-255 for internal use
+								;this is why minimum vertical plot separation is 4
+		lea.l	vduvar_GRA_WINDOW_LEFT,A1		;Y=0
+		lea.l	-2(A0),A0				;X=X-2
+		bsr	x_gra_coord_ext2int			;set up horiz. coordinates/2 this is OK for mode0,4
+		cmp.b	#3,vduvar_PIXELS_PER_BYTE_MINUS1	;get number of pixels/byte (-1)
+								;if Y=3 (modes 1 and 5)
+		beq	.s1					;D16D
+		bhs	.s2					;for modes 0 & 4 this is 7 so D170
+		asr.w	2(A0)					;for other modes divide by 2 twice
+.s1		asr.w	2(A0)					;divide by 2
+.s2		tst.b	vduvar_MODE_SIZE			;get screen display type
+		beq	.s3					;if not 0 (modes 3-7) divide by 2 again
+		asr.w	2(A0)
+.s3		rts						;and exit
+
+;; ----------------------------------------------------------------------------
+;; calculate external coordinates in internal format; 
+; on entry 	X is usually &31E or &320  
+;		Y is vduvar_GRA_WINDOW_BOTTOM or vduvar_GRA_WINDOW_LEFT for vert/horz calc  
+x_gra_coord_ext2int					; LD176
+		btst	#2,zp_vdu_wksp			;get &DA			; TODO eliminate this? use reg?
+							;if bit 2=0
+		beq	.s1				;then D186 to calculate relative coordinates
+		move.w	2(A0),D0			;else get coordinate 
+		bra	.s2				;	D184
+.s1		move.w	2(A0),D0			;get coordinate 
+		add.w	$10(A1),D0			;add cursor position
+.s2		move.w	D0,$10(A1)			;save new cursor 
+		add.w	$C(A1),D0			;add graphics origin
+		move.w	D0,2(A0)
+		asr.w	2(A0)				; DB: change to ASR - TODO: check
+		rts
+
+;; ----------------------------------------------------------------------------
+;; calculate external coordinates from internal coordinates
+x_calculate_external_coordinates_from_internal_coordinates ; TODO: speed up by loading X with address of coords instead of offset?
+		move.l	vduvar_GRA_CUR_INT,vduvar_GRA_CUR_EXT
+
+		move.w	vduvar_GRA_CUR_EXT+2,D0
+		asl.w	#2,D0
+		sub.w	vduvar_GRA_ORG_EXT+2,D0
+		move.w	D0,vduvar_GRA_CUR_EXT+2
+
+		moveq	#4,D1
+		move.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
+.l1		subq	#1,D1
+		lsr.b	D0
+		bne	.l1
+		tst.b	vduvar_MODE_SIZE
+		beq	LD1D5
+		addq	#1,D1
+LD1D5		move.w	vduvar_GRA_CUR_EXT,D0
+		asl.w	D1,D0
+		sub.w	vduvar_GRA_ORG_EXT,D0
+		move.w	D0,vduvar_GRA_CUR_EXT
+		rts
+
+;; ----------------------------------------------------------------------------
+;; compare X and Y PLOT spans
+
+vduvar_TEMP_draw_W		equ	vduvar_TEMP_8 + 0
+vduvar_TEMP_draw_H		equ	vduvar_TEMP_8 + 2
+vduvar_TEMP_draw_XY		equ	vduvar_TEMP_8 + 4
+vduvar_TEMP_draw_Y		equ	vduvar_TEMP_8 + 6
+
+zp_vdu_wksp_draw_flags		equ	zp_vdu_wksp + 1		; contains $80 if dotted line to be drawn, $40 if current point is out of bounds
+zp_vdu_wksp_draw_loop_ctr	equ	zp_vdu_wksp + 2		; save X (counter?)
+zp_vdu_wksp_draw_stop		equ	zp_vdu_wksp + 3		; pointer to end of line to be drawn (contains $20 or $24)
+zp_vdu_wksp_draw_slope		equ	zp_vdu_wksp + 4		; either 0 or 2 depending on slop of line
+zp_vdu_wksp_draw_start		equ	zp_vdu_wksp + 5		; pointer to start of line to be drawn (contains either $20 or $24)
+zp_vdu_wksp_draw_sav		equ	zp_vdu_wksp + 6		; DB: new used to save single byte register. TODO: check for clash!
+	; bits	purpose
+	; 7	dotted line
+	; 6	start point out of bounds
+DRAWFLAGS_START_OOB	equ	$80			; note these are opposite way round to 6502
+DRAWFLAGS_START_DOT	equ	$40
+
+
+vduvar_GRA_WKSP_0_ENDMAJ	equ	vduvar_GRA_WKSP + 0
+vduvar_GRA_WKSP_2_JMP		equ	vduvar_GRA_WKSP + 2	; code to draw pixels?
+vduvar_GRA_WKSP_4_DOTORNOT	equ	vduvar_GRA_WKSP + 4	; when to draw a dot for dotted lines
+vduvar_GRA_WKSP_5_ERRACC	equ	vduvar_GRA_WKSP + 5	; the error accumulator, starts with 1/2 the major
+vduvar_GRA_WKSP_7_DELTA_MINOR	equ	vduvar_GRA_WKSP + 7	; the minor delta (mag of W or H which ever is less)
+vduvar_GRA_WKSP_9_DELTA_MAJOR	equ	vduvar_GRA_WKSP + 9	; the minor delta (mag of W or H which ever is greater)
+
+x_mos_draw_line						; LD1ED
+		TODO "x_mos_draw_line"
+;;9;;		
+;;9;;		jsr	x_PLOTXYsubGRACURStoTEMP8	; get line width/height
+;;9;;		lda	vduvar_TEMP_draw_H		; eor top bytes of height
+;;9;;		eora	vduvar_TEMP_draw_W		; and width
+;;9;;		bmi	1F				; if differing signs
+;;9;;		ldd	vduvar_TEMP_draw_W		; compare width to height
+;;9;;		subd	vduvar_TEMP_draw_H		; NOTE: swapped sense here for differing C flag behaviour TODO: check!
+;;9;;		bra	2F				;
+;;9;;; ---------------------------------------------------------------------------
+;;9;;1		ldd	vduvar_TEMP_draw_W		; signs are different add width to
+;;9;;		addd	vduvar_TEMP_draw_H		; height
+;;9;;2		
+;;9;;		; 	W	H	C
+;;9;;		;	-	-	|W|>|H|
+;;9;;		;	+	+	|W|<|H|
+;;9;;		;	-	+	|W|<|H|
+;;9;;		;	+	-	|W|>|H|
+;;9;;
+;;9;;		rora						
+;;9;;		ldb	#$00					
+;;9;;		eora	vduvar_TEMP_draw_H			
+;;9;;
+;;9;;		; 	W	H	C
+;;9;;		;	-	-	|W|<|H|
+;;9;;		;	+	+	|W|<|H|
+;;9;;		;	-	+	|W|<|H|
+;;9;;		;	+	-	|W|<|H|
+;;9;;
+;;9;;		bpl	1F		; branch if |W| > |H|			
+;;9;;		ldb	#$02					
+;;9;;
+;;9;;		; at this point B = 0 if |W| < |H|
+;;9;;
+;;9;;
+;;9;;1		stb	zp_vdu_wksp_draw_slope			;	D21E
+;;9;;		ldx	#mostbl_drawline_major_routine
+;;9;;		ldx	B,X
+;;9;;		stx	vduvar_VDU_VEC_JMP			;	D229
+;;9;;
+;;9;;		; at this point the choice has been made whether to:
+;;9;;		; move up every pixel (|H|>|W|) or 
+;;9;;		; move right every pixel (|H|<|W|)
+;;9;;
+;;9;;		ldx	#vduvar_TEMP_8			; get sign of either X or Y
+;;9;;		tst	B,X				; depending on B (Y if moving up, X if moving right)
+;;9;;		bpl	1F				; test direction
+;;9;;		ldx	#vduvar_GRA_CUR_INT		; start drawing from current cursor
+;;9;;		bra	2F
+;;9;;1		ldx	#vduvar_VDU_Q_PLT_X		; start from plot point and work back
+;;9;;2		STX_B	zp_vdu_wksp_draw_start		; store the low byte of the start coords pointer
+;;9;;		ldy	#vduvar_TEMP_draw_XY		; 
+;;9;;		jsr	copy4fromXtoY			; copy starting coord to XY accumulator
+;;9;;		ldb	zp_vdu_wksp_draw_start		; get the ending coordinate
+;;9;;		eorb	#$04				; by eor'ing with 4
+;;9;;		stb	zp_vdu_wksp_draw_stop		; and store the low byte of this
+;;9;;		orb	zp_vdu_wksp_draw_slope		; select X or Y depending on slope 
+;;9;;		ldx	#vduvars_start			; point at page 3
+;;9;;		abx					; X points at ending X or Y depending on slope
+;;9;;		jsr	copy2fromXto330			; store in vduvar_GRA_WKSP_0_ENDMAJ
+;;9;;
+;;9;;		lda	vduvar_VDU_Q_PLT_CODE			
+;;9;;		anda	#$10				; dotted line
+;;9;;		asla					; 
+;;9;;		asla					; 
+;;9;;		sta	zp_vdu_wksp_draw_flags		; store in flags as bit 7
+;;9;;
+;;9;;		ldx	#vduvar_TEMP_draw_XY		; get starting coordinate
+;;9;;		jsr	x_Check_window_limits_atX	; check bounds
+;;9;;		sta	zp_vdu_wksp_draw_loop_ctr	; store for later check of ending coords
+;;9;;		beq	1F				; if eq then in bounds don't set flag
+;;9;;
+;;9;;	IF CPU_6309
+;;9;;		oim	#DRAWFLAGS_START_OOB, zp_vdu_wksp_draw_flags	; flag start point is out of bounds
+;;9;;	ELSE
+;;9;;		rol	zp_vdu_wksp_draw_flags
+;;9;;		SEC
+;;9;;		ror	zp_vdu_wksp_draw_flags		
+;;9;;	ENDIF
+;;9;;
+;;9;;1		ldb	zp_vdu_wksp_draw_stop		; LD263
+;;9;;		ldx	#vduvars_start
+;;9;;		abx
+;;9;;		jsr	x_Check_window_limits_atX	; check to see if endpoint is OOB
+;;9;;		bita	zp_vdu_wksp_draw_loop_ctr	; and with saved OOB flags from above
+;;9;;		beq	1F				; not the same
+;;9;;		rts					; if both start and stop out of bounds 
+;;9;;							; _in the same extreme_ POH
+;; ----------------------------------------------------------------------------
+;;9;;1
+;;9;;	IF BLITTER
+;;9;;		ora	zp_vdu_wksp_draw_flags
+;;9;;		sta	zp_vdu_wksp_draw_flags		; used int blitter test
+;;9;;	ENDIF
+;;9;;		ldb	zp_vdu_wksp_draw_slope		; LD26D
+;;9;;		beq	1F				; depending on slope
+;;9;;		lsra					; shift top bound flag into right bound flag
+;;9;;		lsra					;
+;;9;;1		anda	#$02				; check right bound (or top) flag
+;;9;;		beq	x_drawline_majorend_notoob	; skip following if not oob
+;;9;;		orb	#$04				; == 6 or 4 depending on slope
+;;9;;		ldx	#vduvars_start
+;;9;;		abx
+;;9;;		jsr	copy2fromXto330			; copy right (or top) graphics window value into
+;;9;;							; vduvar_GRA_WKSP_0_ENDMAJ, replacing requested coord
+;;9;;x_drawline_majorend_notoob
+;;9;;		jsr	x_drawline_init_bresenham	;	D27E
+;;9;;
+;;9;;	IF BLITTER
+;;9;;
+;;9;;		lda	sysvar_USERFLAG
+;;9;;		coma
+;;9;;		ora	zp_vdu_wksp_draw_flags
+;;9;;		lbeq	x_drawline_blit
+;;9;;	ENDIF
+;;9;;
+;;9;;
+;;9;;
+;;9;;		ldb	zp_vdu_wksp_draw_slope		;	D281
+;;9;;		eorb	#$02				;	D283
+;;9;;		stb	zp_vdu_wksp_draw_sav
+;;9;;;;;	tax						;	D285
+;;9;;;;;	tay						;	D286
+;;9;;		lda	vduvar_TEMP_draw_W		; check for with width / height -ve
+;;9;;		eora	vduvar_TEMP_draw_H		;	D28A
+;;9;;		bpl	LD290				;	D28D
+;;9;;		incb					;	D28F
+;;9;;LD290		ldx	#mostbl_drawline_minor_routine
+;;9;;		aslb
+;;9;;		ldx	B,X
+;;9;;		rorb
+;;9;;		stx	vduvar_GRA_WKSP_2_JMP		;	D293
+;;9;;		lda	#$7F				;	D29C
+;;9;;		sta	vduvar_GRA_WKSP_4_DOTORNOT	;	D29E
+;;9;;	IF BLITTER
+;;9;;		lda	zp_vdu_wksp_draw_flags		; test and remove end OOB flags
+;;9;;		anda	#$C0
+;;9;;		sta	zp_vdu_wksp_draw_flags
+;;9;;	ELSE
+;;9;;		tsta
+;;9;;	ENDIF
+;;9;;		tfr	B,A
+;;9;;		bmi	LD2CE				;	D2A3
+;;9;;		ldx	#mostbl_VDU_mode_size+7
+;;9;;		ldb	B,X				; 4, 0, 6 or 2 depending on B
+;;9;;;	tax						;	D2A8
+;;9;;		ldx	#vduvar_GRA_WINDOW_LEFT
+;;9;;		ldd	B,X				; 	D2AA
+;;9;;		LDY_B	zp_vdu_wksp_draw_sav
+;;9;;		subd	vduvar_TEMP_draw_XY,Y
+;;9;;;;;	sbc	vduvar_TEMP_8+4,y			;	D2AD
+;;9;;;;;	sta	zp_vdu_wksp				;	D2B0
+;;9;;;;;	lda	vduvar_GRA_WINDOW_LEFT+1,x		;	D2B2
+;;9;;;;;	sbc	vduvar_TEMP_8+5,y			;	D2B5
+;;9;;;;;	ldy	zp_vdu_wksp				;	D2B8
+;;9;;;;;	tax						;	D2BA
+;;9;;		bpl	LD2C0				;	D2BB
+;;9;;		m_NEGD	;	D2BD
+;;9;;LD2C0
+;;9;;;;;	tax						;	D2C0
+;;9;;;;;	iny						;	D2C1
+;;9;;;;;	bne	LD2C5					;	D2C2
+;;9;;;;;	inx						;	D2C4
+;;9;;;LD2C5:	txa						;	D2C5
+;;9;;;;;		addd	#1
+;;9;;;;;
+;;9;;;;;		tsta
+;;9;;		incb
+;;9;;		bne	LD2C5
+;;9;;		inca
+;;9;;LD2C5		tsta	; TODO REMOVE?
+;;9;;	
+;;9;;		beq	1F					;	D2C6
+;;9;;		ldb	#$00					;	D2C8
+;;9;;1		stb	zp_vdu_wksp_draw_start			;	D2CA
+;;9;;		beq	LD2D7					;	D2CC
+
+;;9;;LD2CE		
+;;9;;;;;	txa						;	D2CE
+;;9;;		lsra						;	D2CF
+;;9;;		rora						;	D2D0
+;;9;;		ora	#$02					;	D2D1
+;;9;;		eora	zp_vdu_wksp_draw_slope			;	D2D3
+;;9;;		sta	zp_vdu_wksp_draw_slope			;	D2D5
+;;9;;LD2D7		ldx	#vduvar_TEMP_draw_XY			;	D2D7
+;;9;;		jsr	x_setup_screen_addr_from_intcoords_atX	;	D2D9
+;;9;;		ldx	zp_vdu_wksp_draw_loop_ctr
+;;9;;		leax	-1,X
+;;9;;		stx	zp_vdu_wksp_draw_loop_ctr
+;;9;;x_drawline_loop						; LD2E3
+;;9;;		lda	zp_vdu_wksp_draw_flags		; check flags
+;;9;;		beq	x_drawline_plot_point		; no flags - plot this point
+;;9;;		asla
+;;9;;		bpl	x_drawline_notdotted		; if not $80 set then not dotted line
+;;9;;		tst	vduvar_GRA_WKSP_4_DOTORNOT	;	D2E9
+;;9;;		bpl	LD2F3				;	D2EC
+;;9;;		dec	vduvar_GRA_WKSP_4_DOTORNOT	;	D2EE
+;;9;;		bne	LD316				;	D2F1
+;;9;;LD2F3		inc	vduvar_GRA_WKSP_4_DOTORNOT	;	D2F3
+;;9;;		bcc	x_drawline_plot_point		; not expecting to go oob
+;;9;;x_drawline_notdotted					; LD2F9	
+;;9;;		ldx	#vduvar_TEMP_draw_XY			;	D2FB
+;;9;;		jsr	x__check_in_window_bounds_setup_screen_addr_atX				;	D2FD
+;;9;;;;;	ldx	zp_vdu_wksp_draw_loop_ctr			;	D300
+;;9;;		tsta						;	D302
+;;9;;		bne	LD316					;	D304
+;;9;;
+;;9;;x_drawline_plot_point					; LD306	
+;;9;;
+;;9;;		lda	zp_vdu_grpixmask			;	D306
+;;9;;		anda	zp_vdu_gracolourOR			;	D308
+;;9;;		ldb	vduvar_GRA_CUR_CELL_LINE
+;;9;;		ldx	zp_vdu_gra_char_cell
+;;9;;		abx
+;;9;;		ora	,X
+;;9;;		sta	zp_vdu_wksp			;	D30C
+;;9;;		lda	zp_vdu_gracolourEOR		;	D30E
+;;9;;		anda	zp_vdu_grpixmask		;	D310
+;;9;;		eora	zp_vdu_wksp			;	D312
+;;9;;		sta	,X
+;;9;;		;;;	sta	(zp_vdu_gra_char_cell),y	;	D314
+;;9;;LD316
+;;9;;;;;	sec					;	D316
+;;9;;		ldd	vduvar_GRA_WKSP_5_ERRACC		;	D317
+;;9;;		subd	vduvar_GRA_WKSP_7_DELTA_MINOR		;	D31A
+;;9;;		bcc	LD339				;	D326
+;;9;;		addd	vduvar_GRA_WKSP_9_DELTA_MAJOR		;	D32D
+;;9;;		SEC					;	D338
+;;9;;LD339		std	vduvar_GRA_WKSP_5_ERRACC		;	D339
+;;9;;		pshs	CC				;	D33C
+;;9;;		bcc	LD348				;	D33D
+;;9;;		jmp	[vduvar_GRA_WKSP_2_JMP]		;	D33F
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;;; vertical scan module 1
+;;9;;x_drawline_minor_up			; LD342
+;;9;;		dec	vduvar_GRA_CUR_CELL_LINE	;	D342
+;;9;;		bpl	LD348				;	D343
+;;9;;		jsr	x_move_display_point_up_a_line	;	D345
+;;9;;LD348		jmp	[vduvar_VDU_VEC_JMP]		; call major increment routine
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;;; vertical scan module 2
+;;9;;x_drawline_minor_down			; LD34B
+;;9;;		inc	vduvar_GRA_CUR_CELL_LINE
+;;9;;		ldb	vduvar_GRA_CUR_CELL_LINE	; increment cell line counter
+;;9;;		cmpb	#$08				; if overflowed
+;;9;;		bne	LD348				; add a line's worth to pointer
+;;9;;		ldd	zp_vdu_gra_char_cell		;
+;;9;;		addd	vduvar_BYTES_PER_ROW		;
+;;9;;		bpl	LD363				;
+;;9;;		suba	vduvar_SCREEN_SIZE_HIGH		; if we got here wrap screen
+;;9;;LD363		clr	vduvar_GRA_CUR_CELL_LINE
+;;9;;		std	zp_vdu_gra_char_cell		;
+;;9;;		jmp	[vduvar_VDU_VEC_JMP]
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;;; horizontal scan module 1
+;;9;;x_drawline_minor_right			; LD36A
+;;9;;		lsr	zp_vdu_grpixmask		;	D36A
+;;9;;		bcc	LD348				;	D36C
+;;9;;		jsr	x_move_display_move_right_to_next_cell				;	D36E
+;;9;;		jmp	[vduvar_VDU_VEC_JMP]		;	D371
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;;; horizontal scan module 2
+;;9;;x_drawline_minor_left				; LD374
+;;9;;		asl	zp_vdu_grpixmask		;	D374
+;;9;;		bcc	LD348				;	D376
+;;9;;		jsr	x_move_display_move_left_to_next_cell				;	D378
+;;9;;		jmp	[vduvar_VDU_VEC_JMP]		;	D37B
+;;9;;
+;;9;;
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;x_drawline_major_up				; LD37D
+;;9;;		dec	vduvar_GRA_CUR_CELL_LINE	;	D37E
+;;9;;		bpl	1F				;	D37F
+;;9;;		jsr	x_move_display_point_up_a_line	;	D381
+;;9;;		bra	1F				;	D384
+;;9;;x_drawline_major_right				; LD386
+;;9;;		lsr	zp_vdu_grpixmask		;	D386
+;;9;;		bcc	1F				;	D388
+;;9;;		jsr	x_move_display_move_right_to_next_cell				;	D38A
+;;9;;1		puls	CC				;	D38D
+;;9;;;;		ldx	zp_vdu_wksp_draw_loop_ctr
+;;9;;;;		leax	1,X
+;;9;;;;		stx	zp_vdu_wksp_draw_loop_ctr
+;;9;;		inc	zp_vdu_wksp_draw_loop_ctr+1
+;;9;;		bne	1F
+;;9;;		inc	zp_vdu_wksp_draw_loop_ctr+0
+;;9;;		beq	LD39Frts				;	D393
+;;9;;1		tst	zp_vdu_wksp_draw_flags		;	D395
+;;9;;		bmi	x_drawline_move_coords_for_check				;	D397
+;;9;;		lbcc	x_drawline_loop				;	D399
+;;9;;		dec	zp_vdu_wksp_draw_start			;	D39B
+;;9;;		lbne	x_drawline_loop				;	D39D
+;;9;;LD39Frts
+;;9;;		rts					;	D39F
+;;9;;
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;; Still doing starting bounds check update the X/Y coords 
+;;9;;x_drawline_move_coords_for_check			; LD3A0
+;;9;;		lda	zp_vdu_wksp_draw_slope			;	D3A0
+;;9;;		ldy	#vduvar_TEMP_draw_XY
+;;9;;		anda	#$02				;	D3A4
+;;9;;		bcc	LD3C2				; DB: swapped sense here
+;;9;;
+;;9;;		tst	zp_vdu_wksp_draw_slope		;	D3A9
+;;9;;		bmi	LD3B7				;	D3AB
+;;9;;		ldx	A,Y
+;;9;;		leax	1,X
+;;9;;		stx	A,Y
+;;9;;;	inc	vduvar_TEMP_8+4,x		;	D3AD
+;;9;;;	bne	LD3C2				;	D3B0
+;;9;;;	inc	vduvar_TEMP_8+5,x		;	D3B2
+;;9;;;	bcc	LD3C2				;	D3B5
+;;9;;		bra	LD3C2
+;;9;;LD3B7		
+;;9;;		ldx	A,Y
+;;9;;		leax	-1,X
+;;9;;		stx	A,Y
+;;9;;
+;;9;;;;;	lda	vduvar_TEMP_8+4,x		;	D3B7
+;;9;;;;;	bne	LD3BF				;	D3BA
+;;9;;;;;	dec	vduvar_TEMP_8+5,x		;	D3BC
+;;9;;;;;LD3BF:	dec	vduvar_TEMP_8+4,x	;	D3BF
+;;9;;
+;;9;;LD3C2		eora	#$02				;	D3C3
+;;9;;		ldx	A,Y
+;;9;;		leax	1,X
+;;9;;		stx	A,Y
+;;9;;;;;	inc	vduvar_TEMP_8+4,x		;	D3C6
+;;9;;;;;	bne	LD3CE				;	D3C9
+;;9;;;;;	inc	vduvar_TEMP_8+5,x		;	D3CB
+;;9;;;;;LD3CE:	ldx	zp_vdu_wksp+2		;	D3CE
+;;9;;		jmp	x_drawline_loop				;	D3D0
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;;; move display point up a line
+;;9;;x_move_display_point_up_a_line
+;;9;;		ldd	zp_vdu_gra_char_cell
+;;9;;		subd	vduvar_BYTES_PER_ROW
+;;9;;		cmpa	vduvar_SCREEN_BOTTOM_HIGH
+;;9;;		bhs	1F
+;;9;;		adda	vduvar_SCREEN_SIZE_HIGH		; wrap!
+;;9;;1		std	zp_vdu_gra_char_cell
+;;9;;		ldb	#7
+;;9;;		stb	vduvar_GRA_CUR_CELL_LINE
+;;9;;		rts
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;		;TODO: use index register instead?
+;;9;;		; keep 8 bit ops, slightly quicker
+;;9;;x_move_display_move_right_to_next_cell			; LD3ED
+;;9;;		lda	vduvar_LEFTMOST_PIX_MASK	;	D3ED
+;;9;;		sta	zp_vdu_grpixmask		;	D3F0
+;;9;;		ldb	zp_vdu_gra_char_cell+1
+;;9;;		addb	#8
+;;9;;		stb	zp_vdu_gra_char_cell+1
+;;9;;		bcc	1F
+;;9;;		inc	zp_vdu_gra_char_cell
+;;9;;1		rts					;	D3FC
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;		; keep 8 bit ops, slightly quicker
+;;9;;x_move_display_move_left_to_next_cell
+;;9;;		lda	vduvar_RIGHTMOST_PIX_MASK	;	D3FD
+;;9;;		sta	zp_vdu_grpixmask		;	D400
+;;9;;		ldb	zp_vdu_gra_char_cell+1
+;;9;;		subb	#8
+;;9;;		stb	zp_vdu_gra_char_cell+1
+;;9;;		bcc	1F
+;;9;;		dec	zp_vdu_gra_char_cell+0
+;;9;;1		rts
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;;; :: coordinate subtraction
+;;9;;x_PLOTXYsubGRACURStoTEMP8
+;;9;;		ldy	#vduvar_TEMP_8
+;;9;;		ldx	#vduvar_VDU_Q_PLT_X
+x_coords_to_width_height			; LD411
+		jsr	.s1
+.s1		move.w	4(A0),D0
+		sub.w	(A0)+,D0
+		move.w	D0,(A1)+
+		rts					;	D42B
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;
+;;9;;; caculate the initial error accumulator and deltas
+;;9;;; on entry 	X = 306 or 304 depending on slope
+;;9;;; 		Y = zp_vdu_wksp+2 (332)
+;;9;;
+;;9;;x_drawline_init_bresenham				; LD42C
+;;9;;		lda	zp_vdu_wksp_draw_slope		; depending on slope
+;;9;;		bne	LD437				;
+;;9;;		ldx	#vduvar_TEMP_draw_W		;
+;;9;;		ldy	#vduvar_TEMP_draw_H		;
+;;9;;		jsr	x_exchange_2atY_with_2atX	; swap width / height if going up
+;;9;;LD437		ldx	#vduvar_TEMP_draw_W		;
+;;9;;		ldy	#vduvar_GRA_WKSP_7_DELTA_MINOR	;
+;;9;;		jsr	copy4fromXtoY			; 
+;;9;;		LDX_B	zp_vdu_wksp_draw_slope		;	D43F
+;;9;;		ldd	vduvar_GRA_WKSP_0_ENDMAJ	; get major end point
+;;9;;		subd	vduvar_TEMP_draw_XY,X		; subtract major start point
+;;9;;		bmi	LD453				; get absolute value
+;;9;;		m_NEGD					;	D450
+;;9;;
+;;9;;LD453		std	zp_vdu_wksp_draw_loop_ctr	
+;;9;;		ldx	#vduvar_GRA_WKSP_5_ERRACC	;	D457
+;;9;;LD459		jsr	x_drawline_init_get_delta	;	D459
+;;9;;		lsra					;	D45C
+;;9;;		rorb					;	D461
+;;9;;		std	0,X				; store half the major delta as the initial error (middle of point)
+;;9;;		leax	-2,X
+;;9;;
+;;9;;x_drawline_init_get_delta
+;;9;;		ldd	4,X				; get the delta
+;;9;;		bpl	1F				; if +ve skip
+;;9;;		m_NEGD					; negate
+;;9;;		std	4,X				; store the delta
+;;9;;1		rts					; LD47B
+;; ----------------------------------------------------------------------------
+;;9;;copy8fromXtoY
+;;9;;		ldb	#$08				; LD47C
+;;9;;		bra	x_copy_B_bytes_from_XtoY
+;;9;;copy2fromXto330					; LD480
+;;9;;		ldy	#vduvar_GRA_WKSP
+;;9;;copy2fromXtoY					; LD482
+;;9;;		ldb	#$02				
+;;9;;		bra	x_copy_B_bytes_from_XtoY
+;;9;;copy4from324to328
+;;9;;		ldy	#vduvar_TEMP_8		; LD486
+;;9;;copy4fromGRA_CUR_INTtoY
+;;9;;		ldx	#vduvar_GRA_CUR_INT		; LD488
+;;9;;copy4fromXtoY
+;;9;;		ldb	#$04				; LD48A
+;;9;;x_copy_B_bytes_from_XtoY			; LDF8C
+;;9;;		lda	,x+
+;;9;;		sta	,y+
+;;9;;		decb
+;;9;;		bne	x_copy_B_bytes_from_XtoY
+;;9;;		rts
+;;9;;
+;;9;;	IF CPU_6809
+;;9;;
+;; ----------------------------------------------------------------------------
+;; negation routine
+;;9;;x_negation_routine_newAPI
+;;9;;		coma					; TODO CHECK!
+;;9;;		comb
+;;9;;		addd	#1
+;;9;;		rts
+;;9;;	ENDIF
+;;9;;
+;;9;;	IF BLITTER
+;;9;;x_drawline_blit
+;;9;;		ldx	#vduvar_TEMP_draw_XY
+;;9;;		jsr 	x_setup_screen_addr_from_intcoords_atX
+;;9;;
+;;9;;
+;;9;;		lda	zp_mos_jimdevsave
+;;9;;		pshs	A
+;;9;;		lda	#JIM_DEVNO_BLITTER
+;;9;;		sta	zp_mos_jimdevsave
+;;9;;		sta	fred_JIM_DEVNO
+;;9;;		ldx	#jim_page_DMAC
+;;9;;		stx	fred_JIM_PAGE_HI
+;;9;;
+;;9;;		; line drawing test
+;;9;;		;============================
+;;9;;		; set start point address
+;;9;;		lda	#$FF
+;;9;;		sta	jim_DMAC_ADDR_C
+;;9;;		sta	jim_DMAC_ADDR_D
+;;9;;		ldx	zp_vdu_gra_char_cell
+;;9;;		ldb	vduvar_GRA_CUR_CELL_LINE
+;;9;;		abx
+;;9;;		stx	jim_DMAC_ADDR_C+1
+;;9;;		stx	jim_DMAC_ADDR_D+1
+;;9;;		ldx	vduvar_BYTES_PER_ROW
+;;9;;		stx	jim_DMAC_STRIDE_C
+;;9;;		stx	jim_DMAC_STRIDE_D
+;;9;;
+;;9;;		; set start point pixel mask and colour
+;;9;;		lda	zp_vdu_gracolourOR
+;;9;;		eora	zp_vdu_gracolourEOR
+;;9;;		sta	jim_DMAC_DATA_B		
+;;9;;		lda	zp_vdu_grpixmask				
+;;9;;		sta	jim_DMAC_DATA_A
+;;9;;		; set major length
+;;9;;		ldd	zp_vdu_wksp_draw_loop_ctr
+;;9;;		m_NEGD
+;;9;;		std	jim_DMAC_WIDTH		; 16 bits!
+;;9;;		; set slope
+;;9;;		ldd	vduvar_GRA_WKSP_9_DELTA_MAJOR
+;;9;;		std	jim_DMAC_ADDR_B+1		
+;;9;;		ldd	vduvar_GRA_WKSP_5_ERRACC
+;;9;;		std	jim_DMAC_ADDR_A+1		; initial error accumulator value
+;;9;;		ldd	vduvar_GRA_WKSP_7_DELTA_MINOR
+;;9;;		std	jim_DMAC_STRIDE_A
+;;9;;
+;;9;;		;set func gen to be plot B masked by A
+;;9;;		lda	#$CA				; B masked by A
+;;9;;		sta	jim_DMAC_FUNCGEN
+;;9;;
+;;9;;		; set bltcon 0
+;;9;;		lda	#BLITCON_EXEC_C + BLITCON_EXEC_D
+;;9;;		sta	jim_DMAC_BLITCON
+;;9;;		; set bltcon 1 - right/down
+;;9;;		ldb	zp_vdu_wksp_draw_slope
+;;9;;		lda	vduvar_TEMP_draw_W		; check for with width / height -ve
+;;9;;		eora	vduvar_TEMP_draw_H		;	D28A
+;;9;;		bpl	1F				;	D28D
+;;9;;		incb					;	D28F
+;;9;;1		ldx	#mostbl_slope2bltcon		
+;;9;;		lda	B,X
+;;9;;		ora	#BLITCON_ACT_ACT + BLITCON_ACT_CELL + BLITCON_ACT_LINE
+;;9;;		
+;;9;;		sta	jim_DMAC_BLITCON
+;;9;;
+;;9;;		puls	A
+;;9;;		sta	zp_mos_jimdevsave
+;;9;;		sta	fred_JIM_DEVNO
+;;9;;
+;;9;;		rts
+;;9;;
+;;9;;mostbl_slope2bltcon
+;;9;;		FCB	$20,$00,$10,$30
+;;9;;
+;;9;;	ENDIF
+
+
+;	pha					;	D49B
+;	tya					;	D49C
+;	eor	#$FF				;	D49D
+;	tay					;	D49F
+;	pla					;	D4A0
+;	eor	#$FF				;	D4A1
+;	iny					;	D4A3
+;	bne	LD4A9				;	D4A4
+;	clc					;	D4A6
+;	adc	#$01				;	D4A7
+;LD4A9:	rts					;	D4A9
+;; ----------------------------------------------------------------------------
+;LD4AA:	jsr	x__check_in_window_bounds_setup_screen_addr;	D4AA
+;	bne	LD4B7				;	D4AD
+;	lda	(zp_vdu_gra_char_cell),y	;	D4AF
+;	eor	vduvar_GRA_BACK			;	D4B1
+;	sta	zp_vdu_wksp			;	D4B4
+;	rts					;	D4B6
+;; ----------------------------------------------------------------------------
+;LD4B7:	pla					;	D4B7
+;	pla					;	D4B8
+;LD4B9:	inc	vduvar_GRA_CUR_INT+2		;	D4B9
+;	jmp	LD545				;	D4BC
+;; ----------------------------------------------------------------------------
+;; LATERAL FILL ROUTINE
+mos_LATERAL_FILL_ROUTINE
+		TODO "mos_LATERAL_FILL_ROUTINE"
+;	jsr	LD4AA				;	D4BF
+;	and	zp_vdu_grpixmask		;	D4C2
+;	bne	LD4B9				;	D4C4
+;	ldx	#$00				;	D4C6
+;	jsr	LD592				;	D4C8
+;	beq	LD4FA				;	D4CB
+;	ldy	vduvar_GRA_CUR_CELL_LINE	;	D4CD
+;	asl	zp_vdu_grpixmask		;	D4D0
+;	bcs	LD4D9				;	D4D2
+;	jsr	LD574				;	D4D4
+;	bcc	LD4FA				;	D4D7
+;LD4D9:	jsr	x_move_display_move_left_to_next_cell				;	D4D9
+;	lda	(zp_vdu_gra_char_cell),y	;	D4DC
+;	eor	vduvar_GRA_BACK			;	D4DE
+;	sta	zp_vdu_wksp			;	D4E1
+;	bne	LD4F7				;	D4E3
+;	sec					;	D4E5
+;	txa					;	D4E6
+;	adc	vduvar_PIXELS_PER_BYTE_MINUS1	;	D4E7
+;	bcc	LD4F0				;	D4EA
+;	inc	zp_vdu_wksp_draw_flags			;	D4EC
+;	bpl	LD4F7				;	D4EE
+;LD4F0:	tax					;	D4F0
+;	jsr	x_mos_vdu_gra_drawpixel_whole_byte				;	D4F1
+;	sec					;	D4F4
+;	bcs	LD4D9				;	D4F5
+;LD4F7:	jsr	LD574				;	D4F7
+;LD4FA:	ldy	#$00				;	D4FA
+;	jsr	LD5AC				;	D4FC
+;	ldy	#$20				;	D4FF
+;	ldx	#$24				;	D501
+;	jsr	x_exchange_300_3Y_with_300_3X	;	D503
+plot_filhorz_back_qry				; LD506
+		TODO	"plot_filhorz_back_qry - plot fill back?"
+;	jsr	LD4AA				;	D506
+;	ldx	#$04				;	D509
+;	jsr	LD592				;	D50B
+;	txa					;	D50E
+;	bne	LD513				;	D50F
+;	dec	zp_vdu_wksp_draw_flags			;	D511
+;LD513:	dex					;	D513
+;LD514:	jsr	LD54B				;	D514
+;	bcc	LD540				;	D517
+;LD519:	jsr	x_move_display_move_right_to_next_cell				;	D519
+;	lda	(zp_vdu_gra_char_cell),y	;	D51C
+;	eor	vduvar_GRA_BACK			;	D51E
+;	sta	zp_vdu_wksp			;	D521
+;	lda	zp_vdu_wksp+2			;	D523
+;	bne	LD514				;	D525
+;	lda	zp_vdu_wksp			;	D527
+;	bne	LD53D				;	D529
+;	sec					;	D52B
+;	txa					;	D52C
+;	adc	vduvar_PIXELS_PER_BYTE_MINUS1	;	D52D
+;	bcc	LD536				;	D530
+;	inc	zp_vdu_wksp_draw_flags			;	D532
+;	bpl	LD53D				;	D534
+;LD536:	tax					;	D536
+;	jsr	x_mos_vdu_gra_drawpixel_whole_byte				;	D537
+;	sec					;	D53A
+;	bcs	LD519				;	D53B
+;LD53D:	jsr	LD54B				;	D53D
+;LD540:	ldy	#$04				;	D540
+;	jsr	LD5AC				;	D542
+;LD545:	jsr	mos_PLOT_MOVE_absolute				;	D545
+;	jmp	x_calculate_external_coordinates_from_internal_coordinates;	D548
+;; ----------------------------------------------------------------------------
+;LD54B:	lda	zp_vdu_grpixmask		;	D54B
+;	pha					;	D54D
+;	clc					;	D54E
+;	bcc	LD560				;	D54F
+;LD551:	pla					;	D551
+;	inx					;	D552
+;	bne	LD559				;	D553
+;	inc	zp_vdu_wksp_draw_flags			;	D555
+;	bpl	LD56F				;	D557
+;LD559:	lsr	zp_vdu_grpixmask		;	D559
+;	bcs	LD56F				;	D55B
+;	ora	zp_vdu_grpixmask		;	D55D
+;	pha					;	D55F
+;LD560:	lda	zp_vdu_grpixmask		;	D560
+;	bit	zp_vdu_wksp			;	D562
+;	php					;	D564
+;	pla					;	D565
+;	eor	zp_vdu_wksp+2			;	D566
+;	pha					;	D568
+;	plp					;	D569
+;	beq	LD551				;	D56A
+;	pla					;	D56C
+;	eor	zp_vdu_grpixmask		;	D56D
+;LD56F:	sta	zp_vdu_grpixmask		;	D56F
+;	jmp	x_mos_vdu_gra_drawpixels_in_grpixmask				;	D571
+;; ----------------------------------------------------------------------------
+;LD574:	lda	#$00				;	D574
+;	clc					;	D576
+;	bcc	LD583				;	D577
+;LD579:	inx					;	D579
+;	bne	LD580				;	D57A
+;	inc	zp_vdu_wksp_draw_flags			;	D57C
+;	bpl	LD56F				;	D57E
+;LD580:	asl	a				;	D580
+;	bcs	LD58E				;	D581
+;LD583:	ora	zp_vdu_grpixmask		;	D583
+;	bit	zp_vdu_wksp			;	D585
+;	beq	LD579				;	D587
+;	eor	zp_vdu_grpixmask		;	D589
+;	lsr	a				;	D58B
+;	bcc	LD56F				;	D58C
+;LD58E:	ror	a				;	D58E
+;	sec					;	D58F
+;	bcs	LD56F				;	D590
+;LD592:	lda	vduvar_GRA_WINDOW_LEFT,x	;	D592
+;	sec					;	D595
+;	sbc	vduvar_VDU_Q_END - 4			;	D596
+;	tay					;	D599
+;	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	D59A
+;	sbc	vduvar_VDU_Q_END - 3			;	D59D
+;	bmi	LD5A5				;	D5A0
+;	jsr	x_negation_routine		;	D5A2
+;LD5A5:	sta	zp_vdu_wksp_draw_flags			;	D5A5
+;	tya					;	D5A7
+;	tax					;	D5A8
+;	ora	zp_vdu_wksp_draw_flags			;	D5A9
+;	rts					;	D5AB
+;; ----------------------------------------------------------------------------
+;LD5AC:	sty	zp_vdu_wksp			;	D5AC
+;	txa					;	D5AE
+;	tay					;	D5AF
+;	lda	zp_vdu_wksp_draw_flags			;	D5B0
+;	bmi	LD5B6				;	D5B2
+;	lda	#$00				;	D5B4
+;LD5B6:	ldx	zp_vdu_wksp			;	D5B6
+;	bne	LD5BD				;	D5B8
+;	jsr	x_negation_routine		;	D5BA
+;LD5BD:	pha					;	D5BD
+;	clc					;	D5BE
+;	tya					;	D5BF
+;	adc	vduvar_GRA_WINDOW_LEFT,x	;	D5C0
+;	sta	vduvar_VDU_Q_END - 4			;	D5C3
+;	pla					;	D5C6
+;	adc	vduvar_GRA_WINDOW_LEFT+1,x	;	D5C7
+;	sta	vduvar_VDU_Q_END - 3			;	D5CA
+;	rts					;	D5CD
+;; ----------------------------------------------------------------------------
+;; OSWORD 13 read last two graphic cursor positions;  
+;mos_OSWORD_13:
+;	lda	#$03				;	D5CE
+;	jsr	LD5D5				;	D5D0
+;	lda	#$07				;	D5D3
+;LD5D5:	pha					;	D5D5
+;	jsr	x_exg4atGRACURINTwithGRACURINTOLD				;	D5D6
+;	jsr	x_calculate_external_coordinates_from_internal_coordinates;	D5D9
+;	ldx	#$03				;	D5DC
+;	pla					;	D5DE
+;	tay					;	D5DF
+;LD5E0:	lda	vduvar_GRA_CUR_EXT,x		;	D5E0
+;	sta	(zp_mos_OSBW_X),y		;	D5E3
+;	dey					;	D5E5
+;	dex					;	D5E6
+;	bpl	LD5E0				;	D5E7
+;	rts					;	D5E9
+;; ----------------------------------------------------------------------------
+;; PLOT Fill triangle routine
+mos_PLOT_Fill_triangle_routine
+		TODO "mos_PLOT_Fill_triangle_routine"
+;	ldx	#$20				;	D5EA
+;	ldy	#$3E				;	D5EC
+;	jsr	copy8fromXtoY				;	D5EE
+;	jsr	LD632				;	D5F1
+;	ldx	#$14				;	D5F4
+;	ldy	#$24				;	D5F6
+;	jsr	LD636				;	D5F8
+;	jsr	LD632				;	D5FB
+;	ldx	#$20				;	D5FE
+;	ldy	#$2A				;	D600
+;	jsr	x_coords_to_width_height				;	D602
+;	lda	vduvar_TEMP_8+3		;	D605
+;	sta	vduvar_GRA_WKSP+2		;	D608
+;	ldx	#$28				;	D60B
+;	jsr	LD459				;	D60D
+;	ldy	#$2E				;	D610
+;	jsr	x_copyplotcoordsexttoY				;	D612
+;	jsr	x_exg4atGRACURINTwithGRACURINTOLD				;	D615
+;	clc					;	D618
+;	jsr	LD658				;	D619
+;	jsr	x_exg4atGRACURINTwithGRACURINTOLD				;	D61C
+;	ldx	#$20				;	D61F
+;	jsr	x_exchange_4atGRACUREXTOLDwithX				;	D621
+;	sec					;	D624
+;	jsr	LD658				;	D625
+;	ldx	#$3E				;	D628
+;	ldy	#$20				;	D62A
+;	jsr	copy8fromXtoY				;	D62C
+;	jmp	mos_PLOT_MOVE_absolute				;	D62F
+;; ----------------------------------------------------------------------------
+;LD632:	ldx	#$20				;	D632
+;	ldy	#$14				;	D634
+;LD636:	lda	vduvar_GRA_WINDOW_BOTTOM,x	;	D636
+;	cmp	vduvar_GRA_WINDOW_BOTTOM,y	;	D639
+;	lda	vduvar_GRA_WINDOW_BOTTOM+1,x	;	D63C
+;	sbc	vduvar_GRA_WINDOW_BOTTOM+1,y	;	D63F
+;	bmi	LD657				;	D642
+;	jmp	x_exchange_300_3Y_with_300_3X	;	D644
+;; ----------------------------------------------------------------------------
+;; OSBYTE 134  Read cursor position
+mos_OSBYTE_134
+		clr.l	D1
+		move.b	vduvar_TXT_CUR_X,D1		;	D647
+		sub.b	vduvar_TXT_WINDOW_LEFT,D1	;	D64B
+		clr.l	D2
+		move.b	vduvar_TXT_CUR_Y,D2		;	D64F
+		sub.b	vduvar_TXT_WINDOW_TOP,D2	;	D653
+LD657		rts					;	D657
+
+;; ----------------------------------------------------------------------------
+;LD658:	php					;	D658
+;	ldx	#$20				;	D659
+;	ldy	#$35				;	D65B
+;	jsr	x_coords_to_width_height				;	D65D
+;	lda	vduvar_GRA_WKSP+6		;	D660
+;	sta	$033D				;	D663
+;	ldx	#$33				;	D666
+;	jsr	LD459				;	D668
+;	ldy	#$39				;	D66B
+;	jsr	x_copyplotcoordsexttoY				;	D66D
+;	sec					;	D670
+;	lda	vduvar_VDU_Q_END - 2			;	D671
+;	sbc	vduvar_GRA_CUR_INT+2		;	D674
+;	sta	vduvar_VDU_Q_END - 9;	D677
+;	lda	vduvar_VDU_Q_END - 1			;	D67A
+;	sbc	vduvar_GRA_CUR_INT+3		;	D67D
+;	sta	$031C				;	D680
+;	ora	vduvar_VDU_Q_END - 9;	D683
+;	beq	LD69F				;	D686
+;LD688:	jsr	LD6A2				;	D688
+;	ldx	#$33				;	D68B
+;	jsr	LD774				;	D68D
+;	ldx	#$28				;	D690
+;	jsr	LD774				;	D692
+;	inc	vduvar_VDU_Q_END - 9;	D695
+;	bne	LD688				;	D698
+;	inc	$031C				;	D69A
+;	bne	LD688				;	D69D
+;LD69F:	plp					;	D69F
+;	bcc	LD657				;	D6A0
+
+;LD6A2:	ldx	#$39				;	D6A2
+;	ldy	#$2E				;	D6A4
+
+*****************************************************
+* OLD API X,Y contained PAGE 3 relative pointers to *
+* start end of line to plot			    *
+* now X,Y contain full pointers			    *
+*****************************************************
+
+x_vdu_clear_gra_line_newAPI				; 	LD6A6
+		TODO	"x_vdu_clear_gra_line_newAPI"
+;;9;;		stx	zp_vdu_wksp+4				;	check left < right, if not swap em
+;;9;;		ldd	,X
+;;9;;		cmpd	,Y
+;;9;;		blo	1F
+;;9;;		exg	X,Y
+;;9;;		stx	zp_vdu_wksp+4				; note: now using 4,6 instead of 4,5
+;;9;;1		sty	zp_vdu_wksp+6				; 
+;;9;;		ldd	0,y					; right on stack, we're going to use it to count down...
+;;9;;		pshs	D
+;;9;;		ldx	zp_vdu_wksp+6				; check right bound
+;;9;;		jsr	x_Check_window_limits_atX		;
+;;9;;		beq	1F					;
+;;9;;
+;;9;;		cmpa	#$02					; check for bounds broken == right
+;;9;;		bne	3F					; if it's any other bound we're off the screen, skip this line
+;;9;;		ldd	vduvar_GRA_WINDOW_RIGHT			;
+;;9;;		std	0,X					; reset right bound to right edge of window/screen 
+;;9;;1		jsr	x_setup_screen_addr_from_intcoords_atX	; setup the screen address pointer
+;;9;;		ldx	zp_vdu_wksp+4				; check left pointer bounds
+;;9;;		jsr	x_Check_window_limits_atX		;
+;;9;;		lsra						; shift right, Left broken into carry rest in A
+;;9;;		bne	3F					; if anything other than left we're off the screen, skip line
+;;9;;		bcc	1F					; if not C then left bound ok
+;;9;;		ldx	#vduvar_GRA_WINDOW_LEFT			;
+;;9;;1		ldd	[zp_vdu_wksp+6]				; subtract left coord (or window left if bounds broken) from right 
+;;9;;		subd	,x					; to get width
+;;9;;		std	zp_vdu_wksp+2				; store here
+;;9;;		clra
+;;9;;LD6FE		asla						; shift left one
+;;9;;		ora	zp_vdu_grpixmask			; copy in another right most pixel to A
+;;9;;		ldb	zp_vdu_wksp+3				; decrement width counter
+;;9;;		bne	LD719					;
+;;9;;		dec	zp_vdu_wksp+2				;
+;;9;;		bpl	LD719					;
+;;9;;		sta	zp_vdu_grpixmask			; we're at the left of the line, plot pixels in current pixel mask
+;;9;;		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask
+;;9;;3		puls	D		
+;;9;;		std	[zp_vdu_wksp+6]				; restore right bound
+;;9;;		rts						; done
+;; ----------------------------------------------------------------------------
+;;9;;LD719		dec	zp_vdu_wksp+3				; decrement width counter
+;;9;;		tsta						; see if we've filled up A with pixel mask bits
+;;9;;		bpl	LD6FE					; if not try another pixel
+;;9;;		sta	zp_vdu_grpixmask			; store the pixel mask
+;;9;;		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask 	; and plot
+;;9;;		lda	zp_vdu_wksp+3				; get low byte of width counter
+;;9;;		inca						; increment it
+;;9;;		bne	LD72A					;
+;;9;;		inc	zp_vdu_wksp+2				; and high byte if needed
+;;9;;LD72A		pshs	A					; store updated low byte on stack
+;;9;;		lsr	zp_vdu_wksp+2				; divide by width low by two
+;;9;;		rora						; divide A by two
+;;9;;		ldb	vduvar_PIXELS_PER_BYTE_MINUS1		; get pixels per byte
+;;9;;		cmpb	#$03					; 
+;;9;;		beq	LD73B					;
+;;9;;		bcs	LD73E					;
+;;9;;		lsr	zp_vdu_wksp+2				;
+;;9;;		rora						;
+;;9;;LD73B		lsr	zp_vdu_wksp+2				;
+;;9;;		lsra						; 
+;;9;;LD73E		ldb	vduvar_GRA_CUR_CELL_LINE		;
+;;9;;		tsta						;
+;;9;;		beq	LD753					;	D742
+;;9;;LD744		subb	#$08					;	D746
+;;9;;		bcc	LD74D					;	D749
+;;9;;		dec	zp_vdu_gra_char_cell + 0		;	D74B
+;;9;;LD74D		jsr	x_mos_vdu_gra_drawpixel_whole_byte
+;;9;;		deca						;	D750
+;;9;;		bne	LD744					;	D751
+;;9;;
+;;9;;
+;;9;;LD753
+;;9;;		puls	A				;	D753
+;;9;;		anda	vduvar_PIXELS_PER_BYTE_MINUS1	;	D754
+;;9;;		beq	3B				;	D757
+;;9;;		pshs	B
+;;9;;		clrb					;	D75A
+;;9;;LD75C		aslb					;	D75C
+;;9;;		orb	vduvar_RIGHTMOST_PIX_MASK	;	D75D
+;;9;;		deca					;	D760
+;;9;;		bne	LD75C				;	D761
+;;9;;		stb	zp_vdu_grpixmask		;	D763
+;;9;;		puls	B
+;;9;;		subb	#$08				;	D767
+;;9;;		bcc	LD76E				;	D76A
+;;9;;		dec	zp_vdu_gra_char_cell		;	D76C
+;;9;;LD76E		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B				;	D76E
+;;9;;		jmp	3B				;	D771
+
+
+;; ----------------------------------------------------------------------------
+;; OSBYTE 135  Read character at text cursor position
+mos_OSBYTE_135
+;;9;;		TODO	"OSBYTE 135"
+;;9;;		tst	vduvar_COL_COUNT_MINUS1			;	D7C2
+;;9;;		bne	LD7DC					;	D7C5
+;;9;;		lda	[zp_vdu_top_scanline]			;	D7C7
+;;9;;		ldy	#$02					;	D7C9
+;;9;;LD7CB		cmpa	mostbl_TTX_CHAR_CONV+1,y		;	D7CB
+;;9;;		bne	LD7D4					;	D7CE
+;;9;;		lda	mostbl_TTX_CHAR_CONV,y			;	D7D0
+;;9;;		leay	-1,y					;	D7D3
+;;9;;LD7D4		leay	-1,y					;	D7D4
+;;9;;		bpl	LD7CB					;	D7D5
+;;9;;mos_OSBYTE_135_YeqMODE_XeqArts
+;;9;;		LDY_B	vduvar_MODE				;	D7D7
+;;9;;mos_tax		m_tax
+;;9;;		rts						;	D7DB
+;;9;;;; ----------------------------------------------------------------------------
+;;9;;LD7DC		jsr	x_set_up_pattern_copy		;set up copy of the pattern bytes at text cursor
+;;9;;		lda	#$20				;X=&20
+;;9;;		ldx	#vduvar_TEMP_8
+;;9;;		sta	zp_vdu_wksp			;store current char
+;;9;;		bra	1F
+;;9;;mos_OSBYTE_135_lp1					; LD7E1
+;;9;;;;;	txa						;A=&20
+;;9;;;;;	pha						;Save it
+;;9;;		lda	zp_vdu_wksp
+;;9;;1		jsr	x_calc_pattern_addr_for_given_char	;get pattern address for code in A
+;;9;;		ldy	zp_vdu_wksp + 4
+;;9;;;;;	pla						;get back A
+;;9;;;;;	tax						;and X
+;;9;;LD7E8		ldb	#$07				;Y=7
+;;9;;LD7EA		lda	B,X				;get byte in pattern copy
+;;9;;		cmpa	B,Y				;check against pattern source
+;;9;;		bne	LD7F9				;if not the same D7F9
+;;9;;		decb					;else Y=Y-1
+;;9;;		bpl	LD7EA				;and if +ve D7EA
+;;9;;		lda	zp_vdu_wksp
+;;9;;		cmpa	#$7F				;is X=&7F (delete)
+;;9;;		bne	mos_OSBYTE_135_YeqMODE_XeqArts	;if not D7D7
+;;9;;LD7F9		clra
+;;9;;		inc	zp_vdu_wksp			;else X=X+1
+;;9;;		beq	mos_OSBYTE_135_YeqMODE_XeqArts	; past 255 give up return A = 0
+;;9;;		leay	8,Y
+;;9;;		tfr	Y,D
+;;9;;		tstb
+;;9;;;	lda	zp_vdu_wksp+4				;get byte lo address
+;;9;;;	clc						;clear carry
+;;9;;;	adc	#$08					;add 8
+;;9;;;	sta	zp_vdu_wksp+4				;store it
+;;9;;		bne	LD7E8					;and go back to check next character if <>0
+;;9;;		bra	mos_OSBYTE_135_lp1			; recalc char pointer (may be into redeffed chars)
+;;9;;;; set up pattern copy
+;;9;;x_set_up_pattern_copy
+;;9;;		ldb	#$07				; Y=7
+;;9;;		ldx	zp_vdu_top_scanline
+;;9;;		ldy	#vduvar_TEMP_8
+;;9;;LD80A		stb	zp_vdu_wksp			; &DA=Y
+;;9;;		lda	#$01				; A=1 - this will rol out and signal end of loop
+;;9;;		sta	zp_vdu_wksp_draw_flags		; &DB=A
+;;9;;LD810		lda	vduvar_LEFTMOST_PIX_MASK	; A=left colour mask
+;;9;;		sta	zp_vdu_wksp+2			; store an &DC
+;;9;;		lda	B,X				; get a byte from current text character
+;;9;;		eora	vduvar_TXT_BACK			; EOR with text background colour
+;;9;;		CLC					; clear carry
+;;9;;LD81B		bita	zp_vdu_wksp+2			; and check bits of colour mask
+;;9;;		beq	LD820				; if result =0 then D820
+;;9;;		SEC					; else set carry
+;;9;;LD820		rol	zp_vdu_wksp_draw_flags		; &DB=&DB+Carry
+;;9;;		bcs	LD82E				; if carry now set (bit 7 DB originally set) D82E
+;;9;;		lsr	zp_vdu_wksp+2			; else  &DC=&DC/2 - roll screen bits right
+;;9;;		bcc	LD81B				; if carry clear D81B - keep going for this mask
+;;9;;;;;	tya					; A=Y
+;;9;;;;;	adc	#$07				; ADD ( (7+carry)
+;;9;;;;;	tay					; Y=A
+;;9;;		addb	#8
+;;9;;		bra	LD810				; 
+;;9;;
+;;9;;LD82E		ldb	zp_vdu_wksp			; read modified values into Y and A
+;;9;;		lda	zp_vdu_wksp_draw_flags		; 
+;;9;;		sta	B,y				; store copy
+;;9;;		decb					; and do it again
+;;9;;		bpl	LD80A				; until 8 bytes copied
+;;9;;		rts					; exit
+;; ----------------------------------------------------------------------------
+;; pixel reading
+;x_pixel_reading:
+;	pha					;	D839
+;	tax					;	D83A
+;	jsr	x_set_up_and_adjust_positional_data;	D83B
+;	pla					;	D83E
+;	tax					;	D83F
+;	jsr	x__check_in_window_bounds_setup_screen_addr_atX				;	D840
+;	bne	LD85A				;	D843
+;	lda	(zp_vdu_gra_char_cell),y	;	D845
+;LD847:	asl	a				;	D847
+;	rol	zp_vdu_wksp			;	D848
+;	asl	zp_vdu_grpixmask		;	D84A
+;	php					;	D84C
+;	bcs	LD851				;	D84D
+;	lsr	zp_vdu_wksp			;	D84F
+;LD851:	plp					;	D851
+;	bne	LD847				;	D852
+;	lda	zp_vdu_wksp			;	D854
+;	and	vduvar_COL_COUNT_MINUS1		;	D856
+;	rts					;	D859
+;; ----------------------------------------------------------------------------
+;LD85A:	lda	#$FF				;	D85A
+LD85Crts
+		rts					;	D85C
+
+;; ----------------------------------------------------------------------------
+;; : check for window violations and set up screen address
+x__check_in_window_bounds_setup_screen_addr		; LD85D
+		lea.l	vduvar_VDU_Q_END - 4,A0		
+x__check_in_window_bounds_setup_screen_addr_atX		; LD85F
+		bsr	x_Check_window_limits_atX	
+		bne	LD85Crts			;	D862
+x_setup_screen_addr_from_intcoords_atX	
+		clr.w	D0
+		move.b	3(A0),D0			; get y coord
+		not.b	D0				;	D867
+		move.w	D0,D1				; todo speed this up by using D and MUL?
+		and.b	#$07,D0				;	D86A
+		move.b	D0,vduvar_GRA_CUR_CELL_LINE	;	D86C
+		and.b	#$F8,D1
+		mulu	#640/8,D1
+		tst.b	vduvar_MODE_SIZE		;	D87C
+		beq	LD884				;	D87F
+		lsr.w	#1,D1
+LD884		add.w	vduvar_6845_SCREEN_START,D1	;	D884
+		move.w	D1,zp_vdu_gra_char_cell		;	D887
+		move.w	(A0),D0
+		movem.w	D0,-(A7)
+		and.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
+		add.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
+		and.w	#$00FF,D0
+		lea.l	mostbl_VDU_pix_mask_16colour,A0
+		move.b	-1(A0,D0),zp_vdu_grpixmask
+		cmp.b	#3,vduvar_PIXELS_PER_BYTE_MINUS1;	D8A6		
+		movem.w	(A7)+,D0
+		beq	LD8B2				;	4 pixels per byte
+		bhs	LD8B5				;	8 pixels per byte
+						;	2 pixels per byte
+		asl.w	#1,D0
+LD8B2		asl.w	#1,D0		
+LD8B5		and.w	#$FFF8,D0			;	D8B5
+		add.w	zp_vdu_gra_char_cell,D0
+		bpl	LD8C6				;	D8C0
+		sub.w	vduvar_SCREEN_SIZE_HIGH,D0	;	D8C3		
+LD8C6		move.w	D0,zp_vdu_gra_char_cell
+		move.b	vduvar_GRA_CUR_CELL_LINE,D1	;	D8C8
+LD8CBclrArts	clr.w	D0
+		rts					;	D8CD
+
+;; ----------------------------------------------------------------------------
+x_cursor_start					; LD8CE
+		move.b	D0,-(A7)			; Push A
+		clr.w	D1
+		tst.b	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
+		bne	LD916pulsArts			; if not 0 D916
+		btst	#VDU_STATUS_B7_SCREENDIS,zp_vdu_status
+		bne	LD916pulsArts
+		btst	#VDU_STATUS_B5_VDU5,zp_vdu_status
+		bne	LD916pulsArts			; if either VDU is disabled or plot to graphics
+							; cursor enabled then D916
+		btst	#VDU_STATUS_B6_CURSORED,zp_vdu_status
+		bne	.s1				; if cursor editing enabled D8F5
+		move.b	vduvar_CUR_START_PREV,D0	; else get 6845 register start setting
+		and.b	#$9F,D0				; clear bits 5 and 6
+		or.b	#$40,D0				; set bit 6 to modify last cursor size setting
+		bsr	x_crtc_set_cursor		; change write cursor format
+		move.w	vduvar_TXT_CUR_X,vduvar_TEXT_IN_CUR_X	; set text input cursor from text output cursor
+		bsr	x_start_cursor_edit_qry		; modify character at cursor poistion
+		bset	#VDU_STATUS_B1_SCROLLOCK,zp_vdu_status; bit 1 of VDU status is set to bar scrolling
+.s1		bclr	#VDU_STATUS_B6_CURSORED,zp_vdu_status;bit 6 of VDU status =0 
+		move.b	(A7)+,D0			;Pull A
+		and.b	#$7F,D0				;clear hi bit (7)
+		bsr	mos_VDU_WRCH			; exec up down left or right?
+		bset	#VDU_STATUS_B6_CURSORED,zp_vdu_status; enable cursor editing
+		rts
+
+;; ----------------------------------------------------------------------------
+x_cursor_COPY					; LD905
+		btst	#VDU_STATUS_B6_CURSORED,zp_vdu_status
+		beq	LD8CBclrArts				;exit not cursor editing
+		btst	#VDU_STATUS_B5_VDU5,zp_vdu_status
+		bne	LD8CBclrArts				;exit vdu5
+
+		
+		moveq	#135,D0
+		OSBYTE					;read a character from the screen - note changed this to use
+		tst.b	D1
+		move.b	D1,-(A7)			;else store char
+		beq	LD916pulsArts
+		bsr	mos_VDU_9			;perform cursor right
+LD916pulsArts	move.b	(A7)+,D0
+LD917rts	rts
+
+x_cancel_cursor_edit							; LD918
+		bclr	#VDU_STATUS_B1_SCROLLOCK,zp_vdu_status		; reset scroll lock
+		bclr	#VDU_STATUS_B6_CURSORED,zp_vdu_status   	; reset cursor edit
+		bsr	x_crtc_reset_cursor				;	D91D
+		moveq	#$0D,D0						;	D920
+		rts							;	D922
 
 
 
