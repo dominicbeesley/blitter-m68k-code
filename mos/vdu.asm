@@ -566,7 +566,7 @@ LC7A8		lea.l	vduvar_TXT_CUR_X,A0
 ;; ----------------------------------------------------------------------------
 ;; VDU  13	  Carriage  Return	  0 parameters
 mos_VDU_13
-		btst	#VDU_STATUS_B5_VDU5,zp_vdu_txtcolourOR		;	C7AF	
+		btst	#VDU_STATUS_B5_VDU5,zp_vdu_status		;	C7AF	
 		bne	x_set_graphics_cursor_to_left_hand_column	;	C7B4
 LC7B7		bsr	x_cursor_to_window_left				;	C7B7
 		bra	x_setup_displayaddress_and_cursor_position	;	C7BA

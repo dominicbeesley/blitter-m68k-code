@@ -433,7 +433,7 @@ intmsg_lp0:
 
 		
 
-test_d:		dc.b	"Blitter Board 68008", 17,2,17,129,"one",17,1,17,128,"two",0
+test_d:		dc.b	"Blitter Board 68008", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,"four",0
 str_addr_err:	dc.b	"address error",0
 str_bus_err:	dc.b	"bus error",0
 str_illegal:	dc.b	"illegal op",0
