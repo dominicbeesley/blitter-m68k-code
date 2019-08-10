@@ -301,9 +301,8 @@ WRITE_REGS
 *
 *  Copy the registers
 		lea.l	deice_regs,A1		; POINTER TO REGISTERS
-WRRLP		move.b	(A0)+,D0		; GET BYTE TO A
-		move.b	D0,(A1)+		; STORE TO REGISTER RAM
-
+WRRLP		move.b	(A0)+,(A1)+		; GET BYTE TO A
+						; STORE TO REGISTER RAM
 		dbf	D1,WRRLP
 *
 *  Return OK status
@@ -331,7 +330,9 @@ RUN_TARGET
 		movem.l	(A7)+,D0-D7/A0-A6
 
 		move.l	deice_reg_SSP,A7	; restore supervisor stack
-		suba.l	#6,A7			; adjust for RTI
+		move.l	deice_reg_PC,-(A7)
+		move.w	deice_reg_SR,-(A7)
+		rte
 
 
 		rte

@@ -123,7 +123,7 @@ handle_res:
 		bra	.lll2
 .sss1
 
-
+		ori	#$8000,SR	; TRACE
 
 
 there:		move.l	#$01020304, D0
@@ -135,7 +135,7 @@ there:		move.l	#$01020304, D0
 		move.l	#$99887766, D6
 
 
-		trap	#9
+		trap	#0
 
 		
 
