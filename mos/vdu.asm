@@ -96,13 +96,8 @@ mostbl_vdu_q_lengths	; 2's complement
 		dc.b	$F8,$FB,$00,$00,$FC,$FC,$00,$FE ; 24-31
 		dc.b	$00
 
-; TEXT WINDOW -BOTTOM ROW LOOK UP TABLE
-mostbl_vdu_window_bottom
-		dc.b	$C0,$1F,$1F,$1F,$18,$1F,$1F,$18 ;	C3E6
-		dc.b	$18				;	C3EE
-; TEXT WINDOW -RIGHT HAND COLUMN LOOK UP TABLE
-mostbl_vdu_window_right
-		dc.b	$4F,$27,$13,$4F,$27,$13,$27,$27 ;	C3EF
+		dc.b	$C0	; TODO: check wat this is for!
+
 mostbl_VDU_VIDPROC_CTL_by_mode
 		dc.b	$9C,$D8,$F4,$9C,$88,$C4,$88,$4B ;	C3F7
 mostbl_VDU_bytes_per_char
@@ -879,8 +874,18 @@ LC9B3		move.w	D0,vduvar_6845_SCREEN_START
 		moveq	#$0C,D0
 		bra	x_set_6845_screenstart_from_X
 
+
+; TEXT WINDOW -BOTTOM ROW LOOK UP TABLE
+mostbl_vdu_window_bottom
+		dc.b	$1F,$1F,$1F,$18,$1F,$1F,$18,$18
+; TEXT WINDOW -RIGHT HAND COLUMN LOOK UP TABLE
+mostbl_vdu_window_right
+		dc.b	$4F,$27,$13,$4F,$27,$13,$27,$27 ;	C3EF
+
+
 ;; VDU 26  set default windows		  0 parameters
 mos_VDU_26							; LC9BD
+		ori	#$8000,SR
 		clr.w	D0
 		moveq	#$2C,D1
 		lea.l	vduvar_GRA_WINDOW_LEFT,A0
@@ -888,11 +893,12 @@ LC9C1		move.b	D0,(A0,D1)
 		dbf	D1,LC9C1						;	C9C4
 		clr.w	D1
 		move.b	vduvar_MODE,D1						;	C9C7
-		lea.l	mostbl_vdu_window_right,A0				;
-		move.b	(A0,D1),D0						; text window right hand margin maximum
-		move.b	D0,vduvar_TXT_WINDOW_RIGHT				; text window right
+						;
+		move.b	mostbl_vdu_window_right(PC,D1),vduvar_TXT_WINDOW_RIGHT	; text window right hand margin maximum
+										; text window right
 		bsr	LCA88_newAPI						; calculate number of bytes in a line
-		move.b	1(A0,D1),vduvar_TXT_WINDOW_BOTTOM			; text window bottom margin maximum
+		move.b	vduvar_MODE,D1
+		move.b	mostbl_vdu_window_bottom(PC,D1),vduvar_TXT_WINDOW_BOTTOM; text window bottom margin maximum
 										; bottom margin
 		move.b	#$03,vduvar_VDU_Q_END - 1				; set as last parameter
 		move.b	#$02,vduvar_VDU_Q_END - 3				; increment Y

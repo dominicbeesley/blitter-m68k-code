@@ -1,0 +1,12 @@
+W zp_vdu_status
+W vduvar_TXT_WINDOW_LEFT %X08
+W vduvar_TXT_CUR_X %X08
+W vduvar_TXT_CUR_Y
+W vduvar_TXT_WINDOW_LEFT
+W vduvar_TXT_WINDOW_BOTTOM
+W vduvar_TXT_WINDOW_RIGHT
+W vduvar_TXT_WINDOW_TOP
+W zp_vdu_wksp %X16
+W zp_vdu_top_scanline %X16
+W vduvar_6845_SCREEN_START %X16
+W vduvar_6845_CURSOR_ADDR %X16
