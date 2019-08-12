@@ -135,8 +135,9 @@ mostbl_SOUND_PITCH_OFFSET_BY_CHANNEL_LOOK_UP_TABLE
 mostbl_VDU_hwscroll_offb1
 		dc.b	$0D,$05,$0D,$05			;	C44B
 		align	1
-mostbl_VDU_bytes_per_row_w
-		dc.w	40,320,640			;	C463 -- note this was just low byte on 6502
+;; 68 - use tbl68_size_bytes_pre_row instead
+;;mostbl_VDU_bytes_per_row_w
+;;		dc.w	40,320,640			;	C463 -- note this was just low byte on 6502
 ; sent direct to orb of SYSVIA dependent on mode_size
 mostbl_VDU_hwscroll_offb2
 		dc.b	$04,$04,$0C,$0C,$04		;	C44F
@@ -432,7 +433,6 @@ mos_VDU_9						; LC664
 ;; ----------------------------------------------------------------------------
 ;; : text cursor down and right
 x_text_cursor_down_and_right
-		ori #$8000,SR	;TRACE
 		move.b	vduvar_TXT_WINDOW_LEFT,vduvar_TXT_CUR_X
 ;; : text cursor down
 x_text_cursor_down
@@ -849,10 +849,11 @@ x68_add_screen_size_d0
 		rts
 
 x68_sub_screen_size_d0
-		move.w	D0,-(A7)
-		move.b	vduvar_SCREEN_SIZE_HIGH,D0
-		asl.w	#8,D0
-		add.w	(A7)+,D0
+		move.w	D1,-(A7)
+		move.b	vduvar_SCREEN_SIZE_HIGH,D1
+		asl.w	#8,D1
+		sub.w	D1,D0
+		move.w	(A7)+,D1
 		rts
 
 
@@ -871,7 +872,7 @@ x_adjust_screen_RAM_addresses_one_line_scroll
 		bsr	x68_sub_screen_size_d0		
 LC9B3		move.w	D0,vduvar_6845_SCREEN_START
 		move.w	D0,A0
-		moveq	#$0C,D0
+		moveq	#$0C,D1
 		bra	x_set_6845_screenstart_from_X
 
 
@@ -885,7 +886,6 @@ mostbl_vdu_window_right
 
 ;; VDU 26  set default windows		  0 parameters
 mos_VDU_26							; LC9BD
-		ori	#$8000,SR
 		clr.w	D0
 		moveq	#$2C,D1
 		lea.l	vduvar_GRA_WINDOW_LEFT,A0
@@ -1121,7 +1121,8 @@ mos_VDU_set_mode:
 		move.b	mostbl_VDU_screensize_h-mostbl_VDU_mode_colours_m1(A0,D1.w),vduvar_SCREEN_SIZE_HIGH
 		move.b	mostbl_VDU_screebot_h-mostbl_VDU_mode_colours_m1(A0,D1.w),vduvar_SCREEN_BOTTOM_HIGH
 		asl.b	#1,D1
-		move.w	mostbl_VDU_bytes_per_row_w-mostbl_VDU_mode_colours_m1(A0,D1.w),vduvar_BYTES_PER_ROW
+		lea.l	tbl68_size_bytes_pre_row,A1
+		move.w	(A1,D1.w),vduvar_BYTES_PER_ROW
 		andi	#$43,zp_vdu_status
 		move.b	vduvar_MODE,D0
 		move.b	mostbl_VDU_VIDPROC_CTL_by_mode-mostbl_VDU_mode_colours_m1(A0,D0.w),D0
@@ -1407,15 +1408,18 @@ LCE83:		move.b	(A1)+,(A0)+			;	CE83
 		rts					;	CEAB
 
 x_clear_a_line
+		ori	#$8000,SR	; TRACE
+		nop
+		nop
 		move.b	vduvar_TXT_CUR_X,-(A7)		; save text cursor		
 		bsr	x_cursor_to_window_left
 		bsr	x_set_up_displayaddress
 		move.b	vduvar_TXT_WINDOW_RIGHT,D2
 		sub.b	vduvar_TXT_WINDOW_LEFT,D2
 		lea.l	zp_vdu_top_scanline,A0
-		bsr	GetAddrSYS16
-		move.b	vduvar_TXT_BACK,D0
-LCEBF		clr.w	D1
+		bsr	GetAddrSYS16		
+LCEBF		move.b	vduvar_TXT_BACK,D0
+		clr.w	D1
 		move.b	vduvar_BYTES_PER_CHAR,D1
 		subq	#1,D1
 LCEC5		move.b	D0,(A0)+
