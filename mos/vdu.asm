@@ -1408,9 +1408,6 @@ LCE83:		move.b	(A1)+,(A0)+			;	CE83
 		rts					;	CEAB
 
 x_clear_a_line
-		ori	#$8000,SR	; TRACE
-		nop
-		nop
 		move.b	vduvar_TXT_CUR_X,-(A7)		; save text cursor		
 		bsr	x_cursor_to_window_left
 		bsr	x_set_up_displayaddress

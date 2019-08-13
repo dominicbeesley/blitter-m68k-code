@@ -97,8 +97,10 @@ handle_res:
 
 		; boot bodges for not cleared memory faults
 		clr.b	oswksp_VDU_INTERLACE
-		st.b	oswksp_VDU_VERTADJ
+		clr.b	oswksp_VDU_VERTADJ
 		clr.b	sysvar_VDU_Q_LEN		; should be set in buffer flush somewhere early in boot?
+
+		move.b	#$0F,sheila_SYSVIA_ddrb
 
 
 
@@ -121,13 +123,42 @@ handle_res:
 .lll3		move.b	D0,(A0)+
 		dbf	D0,.lll3
 
-		move.w	#255,D1
-.lll4		lea.l	test_d,A0
-.lll2		move.b	(A0)+,D0
-		beq	.sss1
+;		move.w	#255,D1
+;.lll4		lea.l	test_d,A0
+;.lll2		move.b	(A0)+,D0
+;		beq	.sss1
+;		jsr	OSWRCH
+;		bra	.lll2
+;.sss1		dbf	D1,.lll4
+
+		moveq	#0,D4
+.lll5		move.l	D4,D0
+		bsr	PrHex_l
+
+		move.b	#13,D0
 		jsr	OSWRCH
-		bra	.lll2
-.sss1		dbf	D1,.lll4
+		move.b	#10,D0
+		jsr	OSWRCH
+
+
+		move.b	#17,D0
+		jsr	OSWRCH
+		move.b	D4,D0
+		andi.b	#$7,D0
+		jsr	OSWRCH
+
+		move.b	#17,D0
+		jsr	OSWRCH
+		move.b	D4,D0
+		andi.b	#$7,D0
+		not.b	D0
+		jsr	OSWRCH
+
+		addq.l	#1,D4
+		bra	.lll5
+
+
+
 
 		ori	#$8000,SR	; TRACE
 
@@ -144,8 +175,6 @@ there:		move.l	#$01020304, D0
 		trap	#0
 
 		
-
-
 PrHex_l:	swap	D0
 		jsr	PrHex_w
 		swap	D0
@@ -158,6 +187,30 @@ PrHex_b:	move.b,	D0,-(A7)
 		jsr	PrHex_nyb
 		move.b	(A7)+,D0	
 PrHex_nyb:	move.b	D0,-(A7)
+		andi.b	#$F,D0
+		cmp.b	#$9,D0
+		bls	.dig
+		addq.b	#'A'-'9'-1,D0
+.dig:		add.b	#'0',D0
+		jsr	OSWRCH
+		move.b	(A7)+,D0
+		rts
+
+
+
+
+d_PrHex_l:	swap	D0
+		jsr	d_PrHex_w
+		swap	D0
+d_PrHex_w:	move.w	D0,-(A7)
+		asr.w	#8,D0
+		jsr	d_PrHex_b
+		move.w	(A7)+,D0
+d_PrHex_b:	move.b,	D0,-(A7)
+		asr.b	#4,D0
+		jsr	d_PrHex_nyb
+		move.b	(A7)+,D0	
+d_PrHex_nyb:	move.b	D0,-(A7)
 		andi.b	#$F,D0
 		cmp.b	#$9,D0
 		bls	.dig
@@ -341,7 +394,7 @@ intmsg_lp0:
 		bsr	deice_print
 
 		move.l	0(A7,D3.w),D0
-		bsr	PrHex_l
+		bsr	d_PrHex_l
 
 		moveq	#' ',D0
 		bsr	deice_print
@@ -360,7 +413,7 @@ intmsg_lp0:
 		bsr	deice_print
 
 		move.l	32(A7,D3.w),D0
-		bsr	PrHex_l
+		bsr	d_PrHex_l
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -377,7 +430,7 @@ intmsg_lp0:
 
 		move	A7,D0
 		add.l	#66,D0
-		bsr	PrHex_l
+		bsr	d_PrHex_l
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -393,7 +446,7 @@ intmsg_lp0:
 
 		move.l	USP,A0
 		move.l	A0,D0
-		bsr	PrHex_l
+		bsr	d_PrHex_l
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -408,7 +461,7 @@ intmsg_lp0:
 		bsr	deice_print
 
 		move.l	62(A7),D0
-		bsr	PrHex_l
+		bsr	d_PrHex_l
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -422,7 +475,7 @@ intmsg_lp0:
 		bsr	deice_print
 
 		move.w	60(A7),D0
-		bsr	PrHex_w
+		bsr	d_PrHex_w
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -434,7 +487,7 @@ intmsg_lp0:
 
 		
 
-test_d:		dc.b	"Blitter Board 68008", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,"four",0
+test_d:		dc.b	"Blitter Board 68008", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
 str_addr_err:	dc.b	"address error",0
 str_bus_err:	dc.b	"bus error",0
 str_illegal:	dc.b	"illegal op",0
