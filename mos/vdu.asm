@@ -1407,6 +1407,8 @@ LCE83:		move.b	(A1)+,(A0)+			;	CE83
 		move.b	zp_vdu_wksp+1,-(A7)		; save low byte of source pointer
 		rts					;	CEAB
 
+
+
 x_clear_a_line
 		move.b	vduvar_TXT_CUR_X,-(A7)		; save text cursor		
 		bsr	x_cursor_to_window_left
@@ -1415,12 +1417,21 @@ x_clear_a_line
 		sub.b	vduvar_TXT_WINDOW_LEFT,D2
 		lea.l	zp_vdu_top_scanline,A0
 		bsr	GetAddrSYS16		
-LCEBF		move.b	vduvar_TXT_BACK,D0
-		clr.w	D1
+		move.b	vduvar_TXT_BACK,D3
+		asl.w	#8,D3
+		move.b	vduvar_TXT_BACK,D3
+		move.w	D3,D1
+		swap	D3
+		move.w	D1,D3
+LCEBF		clr.w	D1
 		move.b	vduvar_BYTES_PER_CHAR,D1
 		subq	#1,D1
-LCEC5		move.b	D0,(A0)+
+		beq	x_clear_a_line_m07
+		lsr.w	#3,D1
+LCEC5		move.l	D3,(A0)+
+		move.l	D3,(A0)+
 		dbf	D1,LCEC5
+x_clear_a_line_m07_2
 		move.w	A0,D0
 		bpl	LCEDA
 		move.b	vduvar_SCREEN_SIZE_HIGH,D0
@@ -1434,6 +1445,9 @@ LCEE3_sta_TXT_CUR_X_setC_rts
 LCEE6_setC_rts
 		SEC
 		rts
+x_clear_a_line_m07
+		move.b	D3,(A0)+
+		bra	x_clear_a_line_m07_2
 
 ;; ----------------------------------------------------------------------------
 x_check_text_cursor_in_window_setup_display_addr

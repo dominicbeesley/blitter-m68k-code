@@ -123,13 +123,16 @@ handle_res:
 .lll3		move.b	D0,(A0)+
 		dbf	D0,.lll3
 
-;		move.w	#255,D1
-;.lll4		lea.l	test_d,A0
-;.lll2		move.b	(A0)+,D0
-;		beq	.sss1
-;		jsr	OSWRCH
-;		bra	.lll2
-;.sss1		dbf	D1,.lll4
+		move.w	#255,D1
+.lll4		lea.l	test_d,A0
+.lll2		move.b	(A0)+,D0
+		beq	.sss1
+		jsr	OSWRCH
+		bra	.lll2
+.sss1		dbf	D1,.lll4
+
+
+		ori	#$8000,SR	; TRACE
 
 		moveq	#0,D4
 .lll5		move.l	D4,D0

@@ -13,6 +13,7 @@ deice_init
 		move.b	#$40, 		sheila_SERIAL_ULA	; 19200,19200
 		move.b	#%01010111,	sheila_ACIA_CTL		; master reset
 		move.b	#%01010110,	sheila_ACIA_CTL		; RTS high, no interrupts, 8N1, div64
+		clr.b	deice_run_flag
 		rts
 
 
@@ -77,12 +78,23 @@ TSTG_SIZE	:=	*-TSTG		; SIZE OF STRING
 *
 deice_enter	
 INT_ENTRY
+
+* For nmi check to see if we're already running and exit if so
+		cmp.b	#DEICE_STATE_IRQ_x+7,D0
+		bne	.S1
+		tst.b	deice_run_flag
+		beq	.S1
+		; already running POH
+		movem.l	(A7)+,D0-D7/A0-A6
+		rte
+.S1		st.b	deice_run_flag
 		lea.l	deice_reg_top-deice_reg_D0(A7),A0	; calc original stack pointer
 		move.l	A0,-(A7)				; and save as supervisor stack
 		move.l	USP,A0					; user stack
 		move.l	A0,-(A7)				; and save		
 		move.b	D0,-(A7)				; status byte (saved as word)
 INT_ENTRY_GO
+
 *  Save stacked registers from stack to reg block for return to master
 * note we don't bugger about with endianness leave everything big endian
 		moveq	#deice_reg_top-deice_regs-1, D1
@@ -332,10 +344,9 @@ RUN_TARGET
 		move.l	deice_reg_SSP,A7	; restore supervisor stack
 		move.l	deice_reg_PC,-(A7)
 		move.w	deice_reg_SR,-(A7)
+		clr.b	deice_run_flag		
 		rte
 
-
-		rte
 
 
 *===========================================================================
