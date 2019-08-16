@@ -2328,7 +2328,7 @@ x_mos_draw_line						; LD1ED
 ;;9;;		ldy	#vduvar_TEMP_8
 ;;9;;		ldx	#vduvar_VDU_Q_PLT_X
 x_coords_to_width_height			; LD411
-		jsr	.s1
+		bsr	.s1
 .s1		move.w	4(A0),D0
 		sub.w	(A0)+,D0
 		move.w	D0,(A1)+
