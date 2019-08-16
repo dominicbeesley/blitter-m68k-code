@@ -47,14 +47,21 @@
 
 		SECTION "code"
 
-test_sub:	clr.l	D0
-		clr.l	D0
-		clr.l	D0
-		moveq	#0,D0
-		moveq	#0,D0
-		moveq	#0,D0
-		rts
-test_sub_end:
+
+
+ **************************************************************************
+ **************************************************************************
+ **                                                                      **
+ **                                                                      **
+ **      RESET (BREAK) ENTRY POINT                                       **
+ **                                                                      **
+ **      Power up Enter with nothing set, 6522 System VIA IER bits       **
+ **      0 to 6 will be clear                                            **
+ **                                                                      **
+ **      BREAK IER bits 0 to 6 one or more will be set 6522 IER          **
+ **      not reset by BREAK                                              **
+ **                                                                      **
+ **************************************************************************
 
 handle_res:	
 		; copy rom vectors to low memory
@@ -68,6 +75,7 @@ handle_res:
 		move.b	#JIM_DEVNO_BLITTER,(fred_JIM_DEVNO)
 		clr.b	(fred_JIM_DEVNO)
 
+		; initialise DEICE monitor - TODO: move this to utility ROM 
 		bsr	deice_init
 
 		; test deice_print
@@ -79,11 +87,9 @@ handle_res:
 .sk		moveq	#13,D0
 		bsr	deice_print
 
-		move.l	#$FACEBEEF,D0
-		move.l	#$BEEFDEAD,D1
-		move.l	#$DEADBEEF,D2
-		move.l	#$D0B0D0B0,D3
-		move.w	#$0000,D3
+
+
+
 
 
 		; zero page 2 as per cold reset

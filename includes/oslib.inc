@@ -109,92 +109,31 @@ FSCV_6_NewFS				:=	$06
 
 ; OS Vectors
 
-USERV					:=	$0200	; User vector, called by *LINE, *CODE, OSWORD >=&E0
-BRKV					:=	$0202	; The BRK vector
-IRQ1V					:=	$0204	; Main interrupt vector
-IRQ2V					:=	$0206	; Secondary interrupt vector
-CLIV					:=	$0208	; Command Line Interpreter vector
-BYTEV					:=	$020A	; OSBYTE (*FX) calls
-WORDV					:=	$020C	; OSWORD calls
-WRCHV					:=	$020E	; Send character to current output stream
-RDCHV					:=	$0210	; Wait for a character from current input stream
-FILEV					:=	$0212	; Operate on a whole file, eg loading/saving/delete/etc
-ARGSV					:=	$0214	; Read/Write arguments on an open file
-BGETV					:=	$0216	; Read a byte from an open file
-BPUTV					:=	$0218	; Write a byte to an open file
-GBPBV					:=	$021A	; Read/Write block of data from/to open file or device
-FINDV					:=	$021C	; Open or close a file
-FSCV					:=	$021E	; Various filing system control calls
-EVNTV					:=	$0220	; Event handler
-UPTV					:=	$0222	; User Print vector
-NETV					:=	$0224	; Network Print vector
-VDUV					:=	$0226	; Unrecognised VDU commands
-KEYV					:=	$0228	; Read the keyboard
-INSV					:=	$022A	; Insert characters into a buffer
-REMV					:=	$022C	; Remove characters from a buffer
-CNPV					:=	$022E	; Count or Purge a buffer
-;;IND1V					:=	$0230	; Spare 
-SWI9V					:=	$0230	; SWI instruction vector - do not use except for debugging
-ILOPV					:=	$0232	; Illegal operation vector
-NMI9V					:=	$0234	; NMI vector - do not use except for debugging
+USERV					:=	$0400	; User vector, called by *LINE, *CODE, OSWORD >=&E0
+BRKV					:=	$0404	; The BRK vector
+IRQ1V					:=	$0408	; Main interrupt vector
+IRQ2V					:=	$040C	; Secondary interrupt vector
+CLIV					:=	$0410	; Command Line Interpreter vector
+BYTEV					:=	$0414	; OSBYTE (*FX) calls
+WORDV					:=	$0418	; OSWORD calls
+WRCHV					:=	$041C	; Send character to current output stream
+RDCHV					:=	$0420	; Wait for a character from current input stream
+FILEV					:=	$0424	; Operate on a whole file, eg loading/saving/delete/etc
+ARGSV					:=	$0428	; Read/Write arguments on an open file
+BGETV					:=	$042C	; Read a byte from an open file
+BPUTV					:=	$0430	; Write a byte to an open file
+GBPBV					:=	$0434	; Read/Write block of data from/to open file or device
+FINDV					:=	$0438	; Open or close a file
+FSCV					:=	$043C	; Various filing system control calls
+EVNTV					:=	$0440	; Event handler
+UPTV					:=	$0444	; User Print vector
+NETV					:=	$0448	; Network Print vector
+VDUV					:=	$044C	; Unrecognised VDU commands
+KEYV					:=	$0450	; Read the keyboard
+INSV					:=	$0454	; Insert characters into a buffer
+REMV					:=	$0458	; Remove characters from a buffer
+CNPV					:=	$045C	; Count or Purge a buffer
 
-; OS Extended Vectors Marker addresses
-
-EXTVEC_ENTER_USERV			:=	$FF00	; User vector, called by *LINE, *CODE, OSWORD >=&E0
-EXTVEC_ENTER_BRKV			:=	$FF03	; The BRK vector
-EXTVEC_ENTER_IRQ1V			:=	$FF06	; Main interrupt vector
-EXTVEC_ENTER_IRQ2V			:=	$FF09	; Secondary interrupt vector
-EXTVEC_ENTER_CLIV			:=	$FF0C	; Command Line Interpreter vector
-EXTVEC_ENTER_BYTEV			:=	$FF0F	; OSBYTE (*FX) calls
-EXTVEC_ENTER_WORDV			:=	$FF12	; OSWORD calls
-EXTVEC_ENTER_WRCHV			:=	$FF15	; Send character to current output stream
-EXTVEC_ENTER_RDCHV			:=	$FF18	; Wait for a character from current input stream
-EXTVEC_ENTER_FILEV			:=	$FF1B	; Operate on a whole file, eg loading/saving/delete/etc
-EXTVEC_ENTER_ARGSV			:=	$FF1E	; Read/Write arguments on an open file
-EXTVEC_ENTER_BGETV			:=	$FF21	; Read a byte from an open file
-EXTVEC_ENTER_BPUTV			:=	$FF24	; Write a byte to an open file
-EXTVEC_ENTER_GBPBV			:=	$FF27	; Read/Write block of data from/to open file or device
-EXTVEC_ENTER_FINDV			:=	$FF2A	; Open or close a file
-EXTVEC_ENTER_FSCV			:=	$FF2D	; Various filing system control calls
-EXTVEC_ENTER_EVNTV			:=	$FF30	; Event handler
-EXTVEC_ENTER_UPTV			:=	$FF33	; User Print vector
-EXTVEC_ENTER_NETV			:=	$FF36	; Network Print vector
-EXTVEC_ENTER_VDUV			:=	$FF39	; Unrecognised VDU commands
-EXTVEC_ENTER_KEYV			:=	$FF3C	; Read the keyboard
-EXTVEC_ENTER_INSV			:=	$FF3F	; Insert characters into a buffer
-EXTVEC_ENTER_REMV			:=	$FF42	; Remove characters from a buffer
-EXTVEC_ENTER_CNPV			:=	$FF45	; Count or Purge a buffer
-EXTVEC_ENTER_SWI9V			:=	$FF48	; Spare
-EXTVEC_ENTER_ILOPV			:=	$FF4B	; Spare
-EXTVEC_ENTER_NMI9V			:=	$FF4E	; Spare
-
-EXT_USERV				:=	$0D9F	; User vector, called by *LINE, *CODE, OSWORD >=&E0
-EXT_BRKV				:=	$0DA2	; The BRK vector
-EXT_IRQ1V				:=	$0DA5	; Main interrupt vector
-EXT_IRQ2V				:=	$0DA8	; Secondary interrupt vector
-EXT_CLIV				:=	$0DAB	; Command Line Interpreter vector
-EXT_BYTEV				:=	$0DAE	; OSBYTE (*FX) calls
-EXT_WORDV				:=	$0DB1	; OSWORD calls
-EXT_WRCHV				:=	$0DB4	; Send character to current output stream
-EXT_RDCHV				:=	$0DB7	; Wait for a character from current input stream
-EXT_FILEV				:=	$0DBA	; Operate on a whole file, eg loading/saving/delete/etc
-EXT_ARGSV				:=	$0DBD	; Read/Write arguments on an open file
-EXT_BGETV				:=	$0DC0	; Read a byte from an open file
-EXT_BPUTV				:=	$0DC3	; Write a byte to an open file
-EXT_GBPBV				:=	$0DC6	; Read/Write block of data from/to open file or device
-EXT_FINDV				:=	$0DC9	; Open or close a file
-EXT_FSCV				:=	$0DCC	; Various filing system control calls
-EXT_EVNTV				:=	$0DCF	; Event handler
-EXT_UPTV				:=	$0DD2	; User Print vector
-EXT_NETV				:=	$0DD5	; Network Print vector
-EXT_VDUV				:=	$0DD8	; Unrecognised VDU commands
-EXT_KEYV				:=	$0DDB	; Read the keyboard
-EXT_INSV				:=	$0DDE	; Insert characters into a buffer
-EXT_REMV				:=	$0DE1	; Remove characters from a buffer
-EXT_CNPV				:=	$0DE4	; Count or Purge a buffer
-EXT_SWI9V				:=	$0DE7	; SWI instruction vector - do not use except for debugging
-EXT_ILOPV				:=	$0DEA	; Illegal operation vector
-EXT_NMI9V				:=	$0DED	; NMI vector - do not use except for debugging
 
 OSBYTE_13_ENABLE_EVENT			:=	13
 OSBYTE_14_ENABLE_EVENT			:=	14
