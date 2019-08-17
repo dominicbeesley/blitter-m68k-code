@@ -1,10 +1,10 @@
 AS=vasmm68k_mot_win32.exe
-ASFLAGS=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
+ASFLAGS=-pic -m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 
 TARGETS=mos68k.bin
 DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
 
-OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o
+OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o defaultosvectors.o
 OBJS2=$(addprefix obj/, $(OBJS))
 
 all:: $(TARGETS)

@@ -3,6 +3,7 @@
 		include "mos.inc"
 		include "oslib.inc"
 		include "hardware.inc"
+		include "macros.inc"
 ;; ported VDU from 6809 mos
 
 		xdef 	mos_VDU_init
@@ -15,23 +16,6 @@ mostbl_chardefs := font
 		macro	VDU_JMP_REL
 		dc.w	\1-mos_vdu_jmp-2
 		endm	VDU_JMP_REL
-
-		macro   CLC
-		andi	#-2,CCR
-		endm	CLC
-
-		macro   SEC
-		ori	#$0001,CCR
-		endm	CLC
-
-		macro   CLX
-		andi	#-17,CCR
-		endm	CLC
-
-		macro   SEX
-		ori	#$0010,CCR
-		endm	CLC
-
 
 		macro 	TODO
 		trap	#9
@@ -262,9 +246,9 @@ x_vdu_no_q
 		eor.b	#$FF,D0
 LC553		btst	#VDU_STATUS_B7_SCREENDIS,zp_vdu_status			;	C553
 		bne	x_reenable_vdu_if_vdu6		;	vdu disabled
-		move.w	SR,-(A7)
+		move.w	SR,-(SP)
 		bsr	mos_vdu_callfb
-		move.w	(A7)+,CCR			;	C55B
+		move.w	(SP)+,CCR			;	C55B
 		bcc	LC561				;	C55C
 
 x_main_exit_routine
@@ -277,8 +261,8 @@ x_cursor_editing_routines
 		bsr	x_start_cursor_edit_qry		;	C565
 
 x_start_curs_edit					;LC568
-		move.w	SR,-(A7)
-		move.w	D0,-(A7)
+		move.w	SR,-(SP)
+		move.w	D0,-(SP)
 		lea.l	vduvar_TXT_CUR_X,A0		;	C56A
 		lea.l	vduvar_TEXT_IN_CUR_X,A1			;	C56C
 		bsr	x_exchange_2atY_with_2atX	;	C56E
@@ -286,7 +270,7 @@ x_start_curs_edit					;LC568
 		move.w	zp_vdu_top_scanline,A0
 		bsr	x_set_cursor_position_X		;	C574
 		bchg	#VDU_STATUS_B1_SCROLLOCK,zp_vdu_status	; toggle scrolling disabled
-		move.w	(A7)+,D0
+		move.w	(SP)+,D0
 		rtr
 
 x_reenable_vdu_if_vdu6	
@@ -679,7 +663,7 @@ vdu20_2_colour_mode
 mos_VDU_19
 
 
-		move.w	SR, -(A7)			; save flags
+		move.w	SR, -(SP)			; save flags
 		or.w	#$0700,SR			; and disable interrupts
 
 		move.b	vduvar_VDU_Q_END - 5,D1		; b <= logical colour
@@ -842,18 +826,18 @@ LC98B		rts					;	C98B
 
 
 x68_add_screen_size_d0
-		move.w	D0,-(A7)
+		move.w	D0,-(SP)
 		move.b	vduvar_SCREEN_SIZE_HIGH,D0
 		asl.w	#8,D0
-		add.w	(A7)+,D0
+		add.w	(SP)+,D0
 		rts
 
 x68_sub_screen_size_d0
-		move.w	D1,-(A7)
+		move.w	D1,-(SP)
 		move.b	vduvar_SCREEN_SIZE_HIGH,D1
 		asl.w	#8,D1
 		sub.w	D1,D0
-		move.w	(A7)+,D1
+		move.w	(SP)+,D1
 		rts
 
 
@@ -1032,7 +1016,7 @@ mos_VDU_127					; LCAAC
 		bne	LCAC7							;if graphics then CAC7
 		tst.b	vduvar_COL_COUNT_MINUS1					;number of logical colours less 1
 		beq	LCAC2							;if mode 7 CAC2
-		lea.l	mostbl_chardefs,A1
+		lea.l	mostbl_chardefs(PC),A1
 		;;std	zp_vdu_wksp+4						;store in &DF (&DE) now points to C300 SPACE pattern
 		bsr	LCFBF_renderchar2					;display a space
 ;; ----------------------------------------------------------------------------
@@ -1083,7 +1067,7 @@ LCB1Crts	rts
 
 
 mos_VDU_init:						; LCB1D
-		move.b	D0,-(A7)			; save mode #
+		move.b	D0,-(SP)			; save mode #
 		clr.b	zp_vdu_status
 		; clear vdu vars at $300-$37E
 		moveq	#$7D,D0
@@ -1093,7 +1077,7 @@ mos_VDU_init:						; LCB1D
 		clr.b	zp_mos_OSBW_X
 		bsr	mos_OSBYTE_20			; explode characters
 		move.b	#$7F,vduvar_MO7_CUR_CHAR
-		move.b	(A7)+,D0			; get back mode #
+		move.b	(SP)+,D0			; get back mode #
 mos_VDU_set_mode:
 		andi.w	#$07,D0				; restrict to modes 0-6 and clear topbits TODO: ???
 		move.b	D0,vduvar_MODE
@@ -1128,7 +1112,7 @@ mos_VDU_set_mode:
 		move.b	mostbl_VDU_VIDPROC_CTL_by_mode-mostbl_VDU_mode_colours_m1(A0,D0.w),D0
 		bsr	mos_VIDPROC_set_CTL		
 
-		move.w	SR,-(A7)			; save interrupts
+		move.w	SR,-(SP)			; save interrupts
 		ori	#$0700,SR			; disable interrupts
 		clr.w	D2
 		move.b	vduvar_MODE_SIZE,D2
@@ -1141,18 +1125,19 @@ mos_send6845lp					; LCBB0
 		bsr	mos_set_6845_regD1toD0
 		dbf	D1,mos_send6845lp
 
-		move.w	(A7)+,SR			; interrupts back
+		move.w	(SP)+,SR			; interrupts back
 
 		bsr	mos_VDU_20			; default logical colours
 		bsr	mos_VDU_26			; default windows
 
 LCBC1_clear_whole_screen
+		move.l	D4,-(SP)
 		moveq	#-1,D0				; force bank to FFFF
 		move.b	vduvar_SCREEN_BOTTOM_HIGH,D0
 		asl.w	#8,D0
 		move.w	D0,vduvar_6845_SCREEN_START
 		move.l	D0,A0
-		move.l	D0,-(A7)
+		move.l	D0,-(SP)
 		bsr	mos_set_cursor_X
 		moveq	#$0C,D1
 		bsr	mos_set_6845_regD1toD0_16	;	CBD1
@@ -1161,7 +1146,7 @@ LCBC1_clear_whole_screen
 		lea	(mostbl_VDU_screensize_h,PC),A1
 		move.b  (A1,D0.w),D0
 		asl.w	#8,D0
-		move.l	(A7)+,A0
+		move.l	(SP)+,A0
 		adda.w	D0,A0				; point at end of screen and clear down
 		lsr.w	#4,D0				; SZ*256/16
 		subq.w	#1,D0
@@ -1179,7 +1164,7 @@ LCBC1_clear_whole_screen
 		move.l  D1,D4
 .lp		movem.l	D1-D4,-(A0)
 		dbf	D0,.lp
-
+		move.l	(SP)+,D4
 		rts
 
 
@@ -1188,11 +1173,11 @@ LCBC1_clear_whole_screen
 ; note new API, address in D instead of X/A and carry flag is opposite sense
 x_subtract_bytes_per_line_from_D
 		sub.w	vduvar_BYTES_PER_ROW,D0
-		move.w	D1,-(A7)
+		move.w	D1,-(SP)
 		move.b	vduvar_SCREEN_BOTTOM_HIGH,D1
 		asl.w	#8,D1
 		cmp.w	D1,D0
-		move.w	(A7)+,D1
+		move.w	(SP)+,D1
 LCD06		rts					;	CD06
 
 
@@ -1209,14 +1194,14 @@ LCD47		move.b	vduvar_TXT_WINDOW_BOTTOM,D1	; if carry set on entry get TOP else g
 LCD4F		btst	#VDU_STATUS_B6_CURSORED,zp_vdu_status
 		bne	LCD59				; if cursor editing
 		move.b	D1,vduvar_TXT_CUR_Y		
-		lea	4(A7),A7			; skip return and setup address and cursor
+		lea	4(SP),SP			; skip return and setup address and cursor
 		bra	x_setup_displayaddress_and_cursor_position
 ;; ----------------------------------------------------------------------------
-LCD59		move.w	SR,-(A7)			;	CD59
+LCD59		move.w	SR,-(SP)			;	CD59
 		cmp.b	vduvar_TEXT_IN_CUR_Y,D1		;	CD5A
 		bne	.s1				;	CD5D
 		rtr
-.s1		move.w	(A7)+,CCR			;	CD5F
+.s1		move.w	(SP)+,CCR			;	CD5F
 		bcc	LCD66				;	CD60
 		subq.b	#1,vduvar_TEXT_IN_CUR_Y		;	CD62
 LCD65rts
@@ -1230,29 +1215,29 @@ GetTopScanLineAddr
 		; get a 16 bit address in SYS space have to do this 
 		; as move.w *,A0 sign extends
 		; TODO: shorten this
-GetAddrSYS16	move.l	D0,-(A7)
+GetAddrSYS16	move.l	D0,-(SP)
 		moveq	#-1,D0
 		move.w	(A0),D0
 		move.l	D0,A0
-		move.l	(A7)+,D0
+		move.l	(SP)+,D0
 		rts
 
 ;; ----------------------------------------------------------------------------
 ;; set up write cursor
 x_set_up_write_cursor
-		move.w	SR,-(A7)
-		movem.l D0/D1/A0,-(A7)
+		move.w	SR,-(SP)
+		movem.l D0/D1/A0,-(SP)
 		bsr	GetTopScanLineAddr
 		move.b	vduvar_BYTES_PER_CHAR,D1
 		subq	#1,D1
 		bne	LCD8F				; it's not MO.7
 		move.b	vduvar_GRA_WKSP+8,(A0)		; restore original MO.7 character?
-x_cur_exit	movem.l	(A7)+,D0/D1/A0
+x_cur_exit	movem.l	(SP)+,D0/D1/A0
 		rtr
 ;; ----------------------------------------------------------------------------
 x_start_cursor_edit_qry	
-		move.w	SR,-(A7)
-		movem.l D0/D1/A0,-(A7)
+		move.w	SR,-(SP)
+		movem.l D0/D1/A0,-(SP)
 		bsr	GetTopScanLineAddr
 		move.b	vduvar_BYTES_PER_CHAR,D1
 		subq	#1,D1					;
@@ -1325,10 +1310,10 @@ LCE0B		add.w	vduvar_BYTES_PER_ROW,D0
 		bpl	LCE14							;	CE0E
 		bsr	x68_sub_screen_size_d0					;	CE11
 LCE14		move.w	D0,zp_vdu_wksp						;	CE16
-		move	SR,-(A7)
+		move	SR,-(SP)
 		lsr	#8,D0
 		move.b	D0,zp_vdu_wksp+2					;	CE18
-		move	(A7)+,CCR
+		move	(SP)+,CCR
 		bhs	LCE22							;	CE1A
 LCE1C:		bsr	x_copy_text_line_window_LCE73				;	CE1C
 		bra	LCE2A							;	CE1F
@@ -1342,7 +1327,7 @@ LCE2A:		move.w	zp_vdu_wksp,zp_vdu_top_scanline				;
 		beq	x_exchange_TXT_CUR_with_BITMAP_READ			;exchange text column/linelse CDDA
 ;; copy routines
 x_copy_text_line_window_LCE38
-		move.w	D1,-(A7)						; TODO: eliminate?
+		move.w	D1,-(SP)						; TODO: eliminate?
 		move.w	vduvar_TXT_WINDOW_WIDTH_BYTES,D1
 		subq.w	#1,D1
 		lea	zp_vdu_wksp,A0
@@ -1352,7 +1337,7 @@ x_copy_text_line_window_LCE38
 		bsr	GetAddrSYS16
 .s1		move.b	(A1)+,(A0)+
 		dbf	D1,.s1
-		move.w	(A7)+,D1
+		move.w	(SP)+,D1
 		rts
 							;	CE5A
 ;; ----------------------------------------------------------------------------
@@ -1362,7 +1347,7 @@ x_exchange_TXTCUR_wksp_doublertsifwindowempty					; LCE5B
 		sub.b	vduvar_TXT_WINDOW_TOP,D0				;	CE62
 		move.b	D0,zp_vdu_wksp+4					;	CE65
 		bne	x_cursor_to_window_left					;	CE67
-		lea	4(A7),A7						; - skip return
+		lea	4(SP),SP						; - skip return
 		bra	x_exchange_TXT_CUR_with_BITMAP_READ	; if no text window pull return address, put back cursor and exit parent subroutine
 ;; ----------------------------------------------------------------------------
 x_cursor_to_window_left	
@@ -1371,7 +1356,7 @@ x_cursor_to_window_left
 
 x_copy_text_line_window_LCE73
 ;x_copy_text_line_window_LCE73							; LCE73
-		move.b	zp_vdu_wksp+1,-(A7)		; save low byte of source pointer
+		move.b	zp_vdu_wksp+1,-(SP)		; save low byte of source pointer
 
 		lea.l	zp_vdu_wksp,A0			; set up pointers from 16 bit vars
 		bsr	GetAddrSYS16
@@ -1404,13 +1389,13 @@ LCE83:		move.b	(A1)+,(A0)+			;	CE83
 		move.w	A0,zp_vdu_wksp
 		move.w	A1,zp_vdu_top_scanline
 
-		move.b	zp_vdu_wksp+1,-(A7)		; save low byte of source pointer
+		move.b	zp_vdu_wksp+1,-(SP)		; save low byte of source pointer
 		rts					;	CEAB
 
 
 
 x_clear_a_line
-		move.b	vduvar_TXT_CUR_X,-(A7)		; save text cursor		
+		move.b	vduvar_TXT_CUR_X,-(SP)		; save text cursor		
 		bsr	x_cursor_to_window_left
 		bsr	x_set_up_displayaddress
 		move.b	vduvar_TXT_WINDOW_RIGHT,D2
@@ -1439,7 +1424,7 @@ x_clear_a_line_m07_2
 		suba	D0,A0
 LCEDA		dbf	D2,LCEBF
 		move.w	A0,zp_vdu_top_scanline
-		move.b	(A7)+,D0
+		move.b	(SP)+,D0
 LCEE3_sta_TXT_CUR_X_setC_rts	
 		move.b	D0,vduvar_TXT_CUR_X
 LCEE6_setC_rts
@@ -1584,10 +1569,10 @@ render_logox4
 render_logox2
 		bsr	render_logo
 render_logo
-		move.l	A1,-(A7)
+		move.l	A1,-(SP)
 		bsr	render_logo2
 		bsr	mos_VDU_9
-		move.l	(A7)+,A1
+		move.l	(SP)+,A1
 		lea.l	8(A1),A1
 		rts
 ;; ----------------------------------------------------------------------------
@@ -1607,6 +1592,7 @@ LCFE9		move.b	1(A0,D1),D0
 
 ;; four colour modes
 render_char_4colour
+		move.l	A2,-(SP)
 		; TODO check to see if table look up or calculate for masks is quickest
 		lea.l	mostbl_byte_mask_4col,A2
 		clr.w	D2
@@ -1624,11 +1610,12 @@ render_char_4colour
 		eor.b	D1,D2				; apply colour
 		move.b	D2,8(A0,D3)			; store in screen
 		dbf	D3,.l1
+		move.l	(SP)+,A2
 LD017rts	rts
 
 ;; ----------------------------------------------------------------------------
 render_char_16colour
-		movem.w	D4/D5,-(A7)
+		movem.w	D4/D5,-(SP)
 		clr.w	D5
 		lea.l	mostbl_byte_mask_16col,A2
 rc16csk1	move.w	#3,D4				; set bit above bitmask for loop counter
@@ -1644,29 +1631,32 @@ LD023		rol.b	#2,D2
 		dbf	D4,LD023
 LD018		sub.b	#$21,D3
 		bpl	rc16csk1			;	D01B
-		movem.w	(A7)+,D4/D5
+		movem.w	(SP)+,D4/D5
 		rts
 
 ;API68 - returns address in A1
 x_calc_pattern_addr_for_given_char_API68 
-		movem.l	D0,-(A7)
-		andi.l	#$00FF,D0
+		movem.l	D0,-(SP)
+		andi.w	#$00FF,D0
 		asl	#3,D0
 		move.b	D0,zp_vdu_wksp + 5			;a contains "char defs page offset"
 		lsr.w	#8,D0					; get "page"
 		btst	D0,vduvar_EXPLODE_FLAGS			;check if that bit is set in explosion bitmask
 		bne	.x_cpa_sk_exploded			;if it is use that address
 		asl	#8,D0
-		add.l	#mostbl_chardefs - $100,D0		;space is at 32 remember!
-.s1		move.b	zp_vdu_wksp + 5,D0			;store whole address
-		move.l	D0,A1
-		movem.l	(A7)+,D0
+		lea.l	(mostbl_chardefs - $100)(PC),A1		;space is at 32 remember!
+		lea.l	(A1,D0.w),A1
+.s1		clr.w	D0					;clear top bits
+		move.b	zp_vdu_wksp + 5,D0			;store whole address
+		lea.l	(A1,D0.w),A1
+		movem.l	(SP)+,D0
 		rts
 .x_cpa_sk_exploded
 		lea.l	vduvar_EXPLODE_FLAGS,A1
 		clr.l	D0				; TODO - exploded chars only in first 64k?
 		move.b	(A1,D0),D0			;	get explode address from table
 		asl.w	#8,D0
+		move.l	D0,A0
 		bra	.s1
 
 ;;;; ----------------------------------------------------------------------------
@@ -1749,17 +1739,17 @@ mostbl_GCOL_options_proc
 * was plot mode in Y, colour in X
 x_set_gra_masks_newAPI
 		and.w	#$00FF,D1
-		movem.w	D0/D2,-(A7)
+		movem.w	D0/D2,-(SP)
 		or.b	mostbl_GCOL_options_proc(PC,D1),D0
 		move.b	mostbl_GCOL_options_proc+1(PC,D1),D2
 		eor.b	D2,D0
 		move.b	D0,zp_vdu_gracolourOR
-		move.w	(A7)+,D0
+		move.w	(SP)+,D0
 		or.b	mostbl_GCOL_options_proc0(PC,D1),D0
 		move.b	mostbl_GCOL_options_proc+4(PC,D1),D2
 		eor.b	D2,D0
 		move.b	D0,zp_vdu_gracolourEOR
-		move.w	(A7)+,D2
+		move.w	(SP)+,D2
 		rts
 
 
@@ -1787,7 +1777,7 @@ x_copyplotcoordsexttoGRACURINT						; LD0DC
 ;;		jmp	copy4fromXtoY					;	D0E0
 ;; ----------------------------------------------------------------------------
 LD0E3_API68
-		movem.l	D0/A0,-(A7)
+		movem.l	D0/A0,-(SP)
 		lea.l	vduvar_GRA_CUR_INT,A0				;	D0E3
 		bsr	x__check_in_window_bounds_setup_screen_addr_atX	;	D0E5
 		beq	x_mos_vdu_gra_drawpixels_in_grpixmask		;	D0E8
@@ -1814,7 +1804,7 @@ LD103rts
 ;; ----------------------------------------------------------------------------
 
 x_mos_vdu_gra_drawpixel_whole_byte
-		movem.w	D0/D2,-(A7)					; check if needed
+		movem.w	D0/D2,-(SP)					; check if needed
 		lea.l	zp_vdu_gra_char_cell,A0
 		bsr	GetAddrSYS16
 		move.b	(A0,D1),D0					; LD104
@@ -1822,7 +1812,7 @@ x_mos_vdu_gra_drawpixel_whole_byte
 		move.b	zp_vdu_gracolourEOR,D2
 		eor.b	D2,D0
 		move.b	D0,(A0,D1)
-		movem.w	(A7)+,D0/D2
+		movem.w	(SP)+,D0/D2
 		rts
 
 ;; ----------------------------------------------------------------------------
@@ -2987,14 +2977,14 @@ x_setup_screen_addr_from_intcoords_atX
 LD884		add.w	vduvar_6845_SCREEN_START,D1	;	D884
 		move.w	D1,zp_vdu_gra_char_cell		;	D887
 		move.w	(A0),D0
-		movem.w	D0,-(A7)
+		movem.w	D0,-(SP)
 		and.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
 		add.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
 		and.w	#$00FF,D0
 		lea.l	mostbl_VDU_pix_mask_16colour,A0
 		move.b	-1(A0,D0),zp_vdu_grpixmask
 		cmp.b	#3,vduvar_PIXELS_PER_BYTE_MINUS1;	D8A6		
-		movem.w	(A7)+,D0
+		movem.w	(SP)+,D0
 		beq	LD8B2				;	4 pixels per byte
 		bhs	LD8B5				;	8 pixels per byte
 						;	2 pixels per byte
@@ -3011,7 +3001,7 @@ LD8CBclrArts	clr.w	D0
 
 ;; ----------------------------------------------------------------------------
 x_cursor_start					; LD8CE
-		move.b	D0,-(A7)			; Push A
+		move.b	D0,-(SP)			; Push A
 		clr.w	D1
 		tst.b	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
 		bne	LD916pulsArts			; if not 0 D916
@@ -3030,7 +3020,7 @@ x_cursor_start					; LD8CE
 		bsr	x_start_cursor_edit_qry		; modify character at cursor poistion
 		bset	#VDU_STATUS_B1_SCROLLOCK,zp_vdu_status; bit 1 of VDU status is set to bar scrolling
 .s1		bclr	#VDU_STATUS_B6_CURSORED,zp_vdu_status;bit 6 of VDU status =0 
-		move.b	(A7)+,D0			;Pull A
+		move.b	(SP)+,D0			;Pull A
 		and.b	#$7F,D0				;clear hi bit (7)
 		bsr	mos_VDU_WRCH			; exec up down left or right?
 		bset	#VDU_STATUS_B6_CURSORED,zp_vdu_status; enable cursor editing
@@ -3047,10 +3037,10 @@ x_cursor_COPY					; LD905
 		moveq	#135,D0
 		OSBYTE					;read a character from the screen - note changed this to use
 		tst.b	D1
-		move.b	D1,-(A7)			;else store char
+		move.b	D1,-(SP)			;else store char
 		beq	LD916pulsArts
 		bsr	mos_VDU_9			;perform cursor right
-LD916pulsArts	move.b	(A7)+,D0
+LD916pulsArts	move.b	(SP)+,D0
 LD917rts	rts
 
 x_cancel_cursor_edit							; LD918
@@ -3070,13 +3060,13 @@ x_cancel_cursor_edit							; LD918
 mos_OSBYTE_154
 		move.b	zp_mos_OSBW_X,D0
 mos_VIDPROC_set_CTL
-		move.w	SR,-(A7)
+		move.w	SR,-(SP)
 		ori.w	#$0700,SR			;disable interrupts
 		move.b	D0,sysvar_VIDPROC_CTL_COPY	;save RAM copy of new parameter
 		move.b	D0,sheila_VIDULA_ctl		;write to control register
 		move.b	sysvar_FLASH_MARK_PERIOD,sysvar_FLASH_CTDOWN	;read  space count
 							;set flash counter to this value
-		move.w	(A7)+,SR			;get back status
+		move.w	(SP)+,SR			;get back status
 		rts					;and return
 
 *************************************************************************
@@ -3089,20 +3079,20 @@ mos_VIDPROC_set_CTL
 mos_OSBYTE_155
 		move.b	zp_mos_OSBW_X,D0		;	EA10
 write_pallette_reg
-		move	SR,-(A7)			;	EA13
+		move	SR,-(SP)			;	EA13
 		or.w	#$0700,SR			;	EA14
-		move.b	D0,-(A7)
+		move.b	D0,-(SP)
 		eori.b	#$07,D0				;	EA11
 		move.b	D0,sysvar_VIDPROC_PAL_COPY	;	EA15
 		move.b	D0,sheila_VIDULA_pal		;	EA18
-		move.b	(A7)+,D0
+		move.b	(SP)+,D0
 		rte
 
 mos_poke_SYSVIA_orb
-		move.w	SR,-(A7)
+		move.w	SR,-(SP)
 		ori.w	#$0700,SR
 		move.b	D0,sheila_SYSVIA_orb
-		move.w	(A7)+,SR
+		move.w	(SP)+,SR
 		rts
 
 

@@ -21,7 +21,6 @@ DOM_DEBUG_ENTRIES			:= JGH_OSENTRIESLOC-3*4
 BOUNCELOC				:= JGH_OSENTRIESLOC-4*11
 
 
-
 FSCV_CODE_OSCLI_UK			:= $03
 
 ;; on 68008 these vars aren't in zp but instead at $100!
