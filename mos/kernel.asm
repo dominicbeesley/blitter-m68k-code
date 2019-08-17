@@ -134,7 +134,6 @@ handle_res:
 
 		XWRITES	"HELLO ISHBEL"
 
-		ori	#$8000,SR	; TRACE
 
 		lea.l	$FFFF5000,A0
 		move.w	#$FF,D0
@@ -147,7 +146,6 @@ handle_res:
 		SWI	OS_Write0
 		dbf	D1,.lll4
 
-		ori	#$8000,SR	; TRACE
 
 		moveq	#0,D4
 .lll5		move.l	D4,D0
@@ -169,12 +167,6 @@ handle_res:
 
 		addq.l	#1,D4
 		bra	.lll5
-
-
-
-
-		ori	#$8000,SR	; TRACE
-
 
 
 		trap	#0
@@ -400,7 +392,6 @@ FindSwi1	cmp.l	#$100,D7
 		cmp.l	#$200,D7
 		bhs	FindSwi
 		lea.l	SWI_OS_WriteI,A6
-		ori	#$8000,SR ;TRACE
 		bra	SWI_Call_A6
 
 SWI_NOWT	CLV
