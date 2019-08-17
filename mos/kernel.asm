@@ -132,6 +132,9 @@ handle_res:
 		moveq	#2,D0				; init mode 0
 		bsr	mos_VDU_init
 
+		XWRITES	"HELLO ISHBEL"
+
+		ori	#$8000,SR	; TRACE
 
 		lea.l	$FFFF5000,A0
 		move.w	#$FF,D0
@@ -139,13 +142,10 @@ handle_res:
 		dbf	D0,.lll3
 
 		move.w	#255,D1
-.lll4		lea.l	test_d,A0
-.lll2		move.b	(A0)+,D0
-		beq	.sss1
-		SWI	OS_WriteC
-		bra	.lll2
-.sss1		dbf	D1,.lll4
-
+		lea.l	test_d,A0
+.lll4		move.l	A0,D0
+		SWI	OS_Write0
+		dbf	D1,.lll4
 
 		ori	#$8000,SR	; TRACE
 
@@ -153,20 +153,15 @@ handle_res:
 .lll5		move.l	D4,D0
 		bsr	PrHex_l
 
-		move.b	#13,D0
-		SWI	OS_WriteC
-		move.b	#10,D0
-		SWI	OS_WriteC
+		SWI	OS_NewLine
 
 
-		move.b	#17,D0
-		SWI	OS_WriteC
+		SWI	OS_WriteI+17
 		move.b	D4,D0
 		andi.b	#$7,D0
 		SWI	OS_WriteC
 
-		move.b	#17,D0
-		SWI	OS_WriteC
+		SWI	OS_WriteI+17
 		move.b	D4,D0
 		andi.b	#$7,D0
 		not.b	D0
@@ -388,24 +383,33 @@ SWI_Handle_D7
 
 		bclr.l	#17,D7				; clear X bit
 		cmp.l	#$10,D7
-		bhs	FindSwi	
+		bhs	FindSwi1	
 		asl.w	#2,D7
 		lea.l	SWI_TABLE_LOW(PC),A6
 		lea.l	(A6,D7.w),A6
 		move.l	(A6),D7
 		lea.l	(A6,D7.l),A6
+SWI_Call_A6
 		move.l	A6,$08(SP)
 
 		movem.l	(SP)+,D7/A6			; restore A6,D7
 		rts					; call swi stacked
 
+FindSwi1	cmp.l	#$100,D7
+		blo	FindSwi
+		cmp.l	#$200,D7
+		bhs	FindSwi
+		lea.l	SWI_OS_WriteI,A6
+		ori	#$8000,SR ;TRACE
+		bra	SWI_Call_A6
+
 SWI_NOWT	CLV
 		rts
 
 SWI_TABLE_LOW	dc.l	SWI_OS_WriteC-*
-		dc.l	SWI_NOWT-*
-		dc.l	SWI_NOWT-*
-		dc.l	SWI_NOWT-*
+		dc.l	SWI_OS_WriteS-*
+		dc.l	SWI_OS_Write0-*
+		dc.l	SWI_OS_NewLine-*
 		dc.l	SWI_NOWT-*
 		dc.l	SWI_NOWT-*
 		dc.l	SWI_NOWT-*
@@ -654,6 +658,73 @@ mos_WRCH_default_entry
 SWI_OS_WriteC	bsr	callWRCHV
 		CLV
 		rts
+
+SWI_OS_WriteS	movem.l	D0/A0,-(SP)
+	;STACK:
+	;+-----+---+----------------------------------------+
+	;| +12 | l | Original PC (points at SWI number WORD |
+	;+-----+---+----------------------------------------+
+	;| +10 | w | Original SR                            |
+	;+-----+---+----------------------------------------+
+	;| +0C | l | reserved for SWI number                |
+	;+-----+---+----------------------------------------+
+	;| +08 | l | reserved for return to SWI exit        |
+	;+-----+---+----------------------------------------+
+	;| +04 | l | A0 save                                |
+	;+-----+---+----------------------------------------+
+	;| +00 | l | D0 save                                |
+	;+-----+---+----------------------------------------+
+
+		; set A0 to point at original PC
+		move.l	$12(SP),A0
+.lp		move.b  (A0)+,D0
+		beq	.s1
+		bsr	callWRCHV
+		bra	.lp
+.s1		; update SWI return address
+		move.l	A0,D0
+		addq.l	#1,D0
+		bclr	#0,D0
+		move.l	D0,$12(SP)		; this clears V
+		movem.l	(SP)+,D0/A0
+		rts
+
+SWI_OS_Write0	movem.l	D0/A0,-(SP)
+		move.l	D0,A0
+.lp		move.b  (A0)+,D0
+		beq	.s1
+		bsr	callWRCHV
+		bra	.lp
+.s1		movem.l	(SP)+,D0/A0
+		rts
+
+SWI_OS_NewLine	move.l	D0,-(SP)
+		moveq	#13,D0
+		bsr	callWRCHV
+		moveq	#10,D0
+		bsr	callWRCHV
+		move.l	(SP)+,D0
+		rts
+
+SWI_OS_WriteI	move.w	D0,-(SP)
+	;STACK:
+	;+-----+---+----------------------------------------+
+	;| +0C | l | Original PC (points at SWI number WORD |
+	;+-----+---+----------------------------------------+
+	;| +0A | w | Original SR                            |
+	;+-----+---+----------------------------------------+
+	;| +06 | l | reserved for SWI number                |
+	;+-----+---+----------------------------------------+
+	;| +02 | l | reserved for return to SWI exit        |
+	;+-----+---+----------------------------------------+
+	;| +00 | w | D0 save                                |
+	;+-----+---+----------------------------------------+
+		move.b  $9(SP),D0			; get swi number low byte
+		bsr	callWRCHV
+		move.w	(SP)+,D0
+		rts
+
+
 callWRCHV
 		move.l	(WRCHV),-(SP)
 		rts

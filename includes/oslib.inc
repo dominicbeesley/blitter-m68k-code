@@ -1,14 +1,15 @@
 ;	OS Entry points
 
 		macro SWI
-	if (\1 & $00FDFFFF) > $8000
+	if ((\1) & $00FDFFFF) > $8000
 		trap #2
-		dc.l \1
+		dc.l (\1)
 	else
 		trap #1
-		dc.w ((\1 & $00020000) >> 2) | (\1 & $7FFF)
+		dc.w (((\1) & $00020000) >> 2) | ((\1) & $7FFF)
 	endif
 		endm
+
 
 
 ; GSINIT					:=	$FFC2
@@ -371,3 +372,180 @@ OS_ConvertFixedFileSize                           EQU $000000EB ; https://www.ri
 OS_ConvertFileSize                                EQU $000000EC ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
 OS_ConvertVariform                                EQU $000000ED ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
 OS_WriteI                                         EQU $00000100       ; $100-$1FF is VDU$00-VDU$FF https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+
+XOS_WriteC                                         EQU $00020000 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_WriteS                                         EQU $00020001 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_Write0                                         EQU $00020002 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_NewLine                                        EQU $00020003 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_ReadC                                          EQU $00020004
+XOS_CLI                                            EQU $00020005 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Oscli
+XOS_Byte                                           EQU $00020006 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/PMF/osbyte
+XOS_Word                                           EQU $00020007 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/PMF/osword?annotate=4.4.2.8
+XOS_File                                           EQU $00020008
+XOS_Args                                           EQU $00020009
+XOS_BGet                                           EQU $0002000A ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_BPut                                           EQU $0002000B ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_GBPB                                           EQU $0002000C
+XOS_Find                                           EQU $0002000D
+XOS_ReadLine                                       EQU $0002000E ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_Control                                        EQU $0002000F ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_GetEnv                                         EQU $00020010 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_Exit                                           EQU $00020011 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_SetEnv                                         EQU $00020012 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_IntOn                                          EQU $00020013
+XOS_IntOff                                         EQU $00020014
+XOS_CallBack                                       EQU $00020015 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_EnterOS                                        EQU $00020016
+XOS_BreakPt                                        EQU $00020017 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38 Middle?annotate=4.15.2.30
+XOS_BreakCtrl                                      EQU $00020018
+XOS_UnusedSWI                                      EQU $00020019 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38 Middle?annotate=4.15.2.30
+XOS_UpdateMEMC                                     EQU $0002001A ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5 MEMC1?annotate=4.1.7.1 MEMC2?annotate=4.1.7.1
+XOS_SetCallBack                                    EQU $0002001B ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_Mouse                                          EQU $0002001C ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_Heap                                           EQU $0002001D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/HeapMan?annotate=4.5.2.4.2.1
+XOS_Module                                         EQU $0002001E ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ModHand?annotate=4.11.2.13
+XOS_Claim                                          EQU $0002001F ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_Release                                        EQU $00020020 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_ReadUnsigned                                   EQU $00020021 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_GenerateEvent                                  EQU $00020022 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/NewIRQs?annotate=4.10.2.26
+XOS_ReadVarVal                                     EQU $00020023 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Arthur2?annotate=4.6.2.10
+XOS_SetVarVal                                      EQU $00020024 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Arthur2?annotate=4.6.2.10
+XOS_GSInit                                         EQU $00020025 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Arthur2?annotate=4.6.2.10
+XOS_GSRead                                         EQU $00020026 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Arthur2?annotate=4.6.2.10
+XOS_GSTrans                                        EQU $00020027 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Arthur2?annotate=4.6.2.10
+XOS_BinaryToDecimal                                EQU $00020028 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_FSControl                                      EQU $00020029 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_ChangeDynamicArea                              EQU $0002002A ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26 Utility?annotate=4.6.2.8
+XOS_GenerateError                                  EQU $0002002B ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_ReadEscapeState                                EQU $0002002C ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_EvaluateExpression                             EQU $0002002D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Arthur3?annotate=4.3.2.11
+XOS_SpriteOp                                       EQU $0002002E
+XOS_ReadPalette                                    EQU $0002002F
+XOS_ServiceCall                                    EQU $00020030 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_ReadVduVariables                               EQU $00020031 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_ReadPoint                                      EQU $00020032
+XOS_UpCall                                         EQU $00020033 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_CallAVector                                    EQU $00020034 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_ReadModeVariable                               EQU $00020035 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_RemoveCursors                                  EQU $00020036 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_RestoreCursors                                 EQU $00020037 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_SWINumberToString                              EQU $00020038 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/SWINaming?annotate=4.5.2.8
+XOS_SWINumberFromString                            EQU $00020039 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/SWINaming?annotate=4.5.2.8
+XOS_ValidateAddress                                EQU $0002003A ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_CallAfter                                      EQU $0002003B ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/TickEvents?annotate=4.4.2.4
+XOS_CallEvery                                      EQU $0002003C ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/TickEvents?annotate=4.4.2.4
+XOS_RemoveTickerEvent                              EQU $0002003D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/TickEvents?annotate=4.4.2.4
+XOS_InstallKeyHandler                              EQU $0002003E
+XOS_CheckModeValid                                 EQU $0002003F ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_ChangeEnvironment                              EQU $00020040 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_ClaimScreenMemory                              EQU $00020041
+XOS_ReadMonotonicTime                              EQU $00020042
+XOS_SubstituteArgs                                 EQU $00020043 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_PrettyPrint                                    EQU $00020044 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_Plot                                           EQU $00020045 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduplot?annotate=4.2.2.5 vduswis?annotate=4.6.2.21
+XOS_WriteN                                         EQU $00020046 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_AddToVector                                    EQU $00020047 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_WriteEnv                                       EQU $00020048 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ReadArgs                                       EQU $00020049 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ReadRAMFsLimits                                EQU $0002004A ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ClaimDeviceVector                              EQU $0002004B
+XOS_ReleaseDeviceVector                            EQU $0002004C
+XOS_DelinkApplication                              EQU $0002004D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_RelinkApplication                              EQU $0002004E ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ArthurSWIs?annotate=4.8.2.20
+XOS_HeapSort                                       EQU $0002004F ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/HeapSort?annotate=4.2.2.5
+XOS_ExitAndDie                                     EQU $00020050 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ReadMemMapInfo                                 EQU $00020051 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26
+XOS_ReadMemMapEntries                              EQU $00020052 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26
+XOS_SetMemMapEntries                               EQU $00020053 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26
+XOS_AddCallBack                                    EQU $00020054 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ReadDefaultHandler                             EQU $00020055 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_SetECFOrigin                                   EQU $00020056
+XOS_SerialOp                                       EQU $00020057 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_ReadSysInfo                                    EQU $00020058 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_Confirm                                        EQU $00020059 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ChangedBox                                     EQU $0002005A ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_CRC                                            EQU $0002005B ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_ReadDynamicArea                                EQU $0002005C ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26
+XOS_PrintChar                                      EQU $0002005D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/PMF/oseven?annotate=4.2.2.3
+XOS_ChangeRedirection                              EQU $0002005E
+XOS_RemoveCallBack                                 EQU $0002005F ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_FindMemMapEntries                              EQU $00020060 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26
+XOS_SetColour                                      EQU $00020061
+XOS_ClaimSWI                                       EQU $00020062
+XOS_ReleaseSWI                                     EQU $00020063
+XOS_Pointer                                        EQU $00020064 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/PMF/mouse?annotate=4.3.2.4
+XOS_ScreenMode                                     EQU $00020065 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/vdu/vduswis?annotate=4.6.2.21
+XOS_DynamicArea                                    EQU $00020066 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ChangeDyn?annotate=4.9.2.26
+XOS_AbortTrap                                      EQU $00020067
+XOS_Memory                                         EQU $00020068 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MemInfo?annotate=4.4.2.26
+XOS_ClaimProcessorVector                           EQU $00020069 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ExtraSWIs?annotate=4.1.8.2
+XOS_Reset                                          EQU $0002006A
+XOS_MMUControl                                     EQU $0002006B ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_ResyncTime                                     EQU $0002006C ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/PMF/realtime?annotate=4.3.2.4
+XOS_PlatformFeatures                               EQU $0002006D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+XOS_SynchroniseCodeAreas                           EQU $0002006E ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/ARM600?annotate=4.12.2.36
+XOS_CallASWI                                       EQU $0002006F
+XOS_AMBControl                                     EQU $00020070 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/AMBControl/main?annotate=4.1.3.1.8.5
+XOS_CallASWIR12                                    EQU $00020071
+XOS_SpecialControl                                 EQU $00020072
+XOS_EnterUSR32                                     EQU $00020073
+XOS_EnterUSR26                                     EQU $00020074
+XOS_VIDCDivider                                    EQU $00020075
+XOS_NVMemory                                       EQU $00020076 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/PMF/i2cutils?annotate=4.11.2.28
+XOS_ClaimOSSWI                                     EQU $00020077
+XOS_TaskControl                                    EQU $00020078
+XOS_DeviceDriver                                   EQU $00020079
+XOS_Hardware                                       EQU $0002007A
+XOS_IICOp                                          EQU $0002007B
+XOS_LeaveOS                                        EQU $0002007C
+XOS_ReadLine32                                     EQU $0002007D ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Middle?annotate=4.15.2.30
+XOS_SubstituteArgs32                               EQU $0002007E ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/MoreSWIs?annotate=4.3.2.10
+XOS_HeapSort32                                     EQU $0002007F ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/HeapSort?annotate=4.2.2.5
+XOS_ConvertStandardDateAndTime                     EQU $000200C0 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5  PMF/convdate
+XOS_ConvertDateAndTime                             EQU $000200C1 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5  PMF/convdate
+XOS_ConvertHex1                                    EQU $000200D0
+XOS_ConvertHex2                                    EQU $000200D1
+XOS_ConvertHex4                                    EQU $000200D2
+XOS_ConvertHex6                                    EQU $000200D3
+XOS_ConvertHex8                                    EQU $000200D4
+XOS_ConvertCardinal1                               EQU $000200D5
+XOS_ConvertCardinal2                               EQU $000200D6
+XOS_ConvertCardinal3                               EQU $000200D7
+XOS_ConvertCardinal4                               EQU $000200D8
+XOS_ConvertInteger1                                EQU $000200D9
+XOS_ConvertInteger2                                EQU $000200DA
+XOS_ConvertInteger3                                EQU $000200DB
+XOS_ConvertInteger4                                EQU $000200DC
+XOS_ConvertBinary1                                 EQU $000200DD
+XOS_ConvertBinary2                                 EQU $000200DE
+XOS_ConvertBinary3                                 EQU $000200DF
+XOS_ConvertBinary4                                 EQU $000200E0
+XOS_ConvertSpacedCardinal1                         EQU $000200E1
+XOS_ConvertSpacedCardinal2                         EQU $000200E2
+XOS_ConvertSpacedCardinal3                         EQU $000200E3
+XOS_ConvertSpacedCardinal4                         EQU $000200E4
+XOS_ConvertSpacedInteger1                          EQU $000200E5
+XOS_ConvertSpacedInteger2                          EQU $000200E6
+XOS_ConvertSpacedInteger3                          EQU $000200E7
+XOS_ConvertSpacedInteger4                          EQU $000200E8
+XOS_ConvertFixedNetStation                         EQU $000200E9 ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_ConvertNetStation                              EQU $000200EA ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_ConvertFixedFileSize                           EQU $000200EB ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_ConvertFileSize                                EQU $000200EC ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_ConvertVariform                                EQU $000200ED ; https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Convrsions?annotate=4.3.2.5
+XOS_WriteI                                         EQU $00020100       ; $100-$1FF is VDU$00-VDU$FF https://www.riscosopen.org/viewer/view/castle/RiscOS/Sources/Kernel/s/Kernel?annotate=4.12.2.38
+
+
+
+		macro 	WRITES
+		SWI	OS_WriteS
+		dc.b	\1,0
+		align	1
+		endm
+
+		macro 	XWRITES
+		SWI	XOS_WriteS
+		dc.b	\1,0
+		align	1
+		endm
+

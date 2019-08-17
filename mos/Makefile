@@ -1,5 +1,6 @@
 AS=vasmm68k_mot_win32.exe
 ASFLAGS=-pic -m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
+ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 
 TARGETS=mos68k.bin
 DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
@@ -21,6 +22,10 @@ mos68k.bin: $(OBJS2)
 obj/%.o: $(DEPS)
 obj/%.o: %.asm 
 	$(AS) $(ASFLAGS) -Fvobj -o $@ -L $(basename $@).lst $<
+
+obj/romvectors.o: romvectors.asm 
+	$(AS) $(ASFLAGS2) -Fvobj -o $@ -L $(basename $@).lst $<
+
 
 clean::
 	-rm $(TARGETS) 

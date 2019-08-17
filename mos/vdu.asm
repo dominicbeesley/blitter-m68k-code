@@ -3035,7 +3035,7 @@ x_cursor_COPY					; LD905
 
 		
 		moveq	#135,D0
-		OSBYTE					;read a character from the screen - note changed this to use
+		SWI	XOS_Byte				;read a character from the screen - note changed this to use
 		tst.b	D1
 		move.b	D1,-(SP)			;else store char
 		beq	LD916pulsArts
