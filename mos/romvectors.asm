@@ -18,13 +18,13 @@ romv_opA:	dc.l	handle_opA
 romv_opF:	dc.l	handle_opF
 		blk.l	12,0
 romv_int_spur	dc.l	handle_int_spur
-romv_int_1	dc.l	handle_int_1
-romv_int_2	dc.l	handle_int_2
-romv_int_3	dc.l	handle_int_3
-romv_int_4	dc.l	handle_int_4
-romv_int_5	dc.l	handle_int_5
-romv_int_6	dc.l	handle_int_6
-romv_int_7	dc.l	handle_int_7
+romv_int_1	dc.l	handle_int_IRQ
+romv_int_2	dc.l	handle_int_IRQ
+romv_int_3	dc.l	handle_int_NMI
+romv_int_4	dc.l	handle_int_NMI
+romv_int_5	dc.l	handle_int_NMI
+romv_int_6	dc.l	handle_int_NMI
+romv_int_7	dc.l	handle_int_DEBUG
 romv_trap_0	dc.l	handle_trap_0
 romv_trap_1	dc.l	handle_trap_1
 romv_trap_2	dc.l	handle_trap_2

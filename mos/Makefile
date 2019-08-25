@@ -5,7 +5,7 @@ ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 TARGETS=mos68k.bin
 DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
 
-OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o defaultosvectors.o
+OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o defaultosvectors.o interrupts.o keyboard.o defaultsysvars.o
 OBJS2=$(addprefix obj/, $(OBJS))
 
 all:: $(TARGETS)

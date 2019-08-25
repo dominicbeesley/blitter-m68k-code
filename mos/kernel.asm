@@ -20,13 +20,9 @@
 		xdef		handle_opA
 		xdef		handle_opF
 		xdef		handle_int_spur
-		xdef		handle_int_1
-		xdef		handle_int_2
-		xdef		handle_int_3
-		xdef		handle_int_4
-		xdef		handle_int_5
-		xdef		handle_int_6
-		xdef		handle_int_7
+		xdef		handle_int_IRQ
+		xdef		handle_int_NMI
+		xdef		handle_int_DEBUG
 		xdef		handle_trap_0
 		xdef		handle_trap_1
 		xdef		handle_trap_2
@@ -52,6 +48,10 @@
 		SECTION "code"
 
 
+		macro DEBUG_INFO
+
+		endm
+
 
  **************************************************************************
  **************************************************************************
@@ -75,10 +75,12 @@ handle_res:
 .lp:		move.l	(A6)+,(A0)+
 		dbf	D0,.lp
 
-
 		; switch maps by temporarily selecting blitter device
 		move.b	#JIM_DEVNO_BLITTER,(fred_JIM_DEVNO)
 		clr.b	(fred_JIM_DEVNO)
+
+		move.w	#$4E73,vec_nmi						; set rte in nmi space start
+		ori.w	#$0700,SR						; disable interrupts
 
 		; initialise DEICE monitor - TODO: move this to utility ROM 
 		bsr	deice_init
@@ -88,29 +90,140 @@ handle_res:
 .lp2		move.b	(A0)+,D0
 		beq	.sk
 		bsr	deice_print
+		bcc	.nomsg
 		bra	.lp2
 .sk		moveq	#13,D0
 		bsr	deice_print
+.nomsg	
+		ori.w	#$8000,SR ; TRACE
 
+		move.b	sheila_SYSVIA_ier,D0
+		asl.b	#1,D0
+		move.b	D0,D4				; save this for later
+		beq	mos_handle_res_skip_clear_mem1	; it's a power boot do a full clear
 
+		move.b	sysvar_BREAK_EFFECT,D0		;else if BREAK pressed read BREAK Action flags (set by
+							;*FX200,n) 
+		lsr	#1,D0				;divide by 2
+		cmp.b	#$01,D0				;if (bit 1 not set by *FX200)
+		bne	mos_handle_res_skip_clear_mem2	;then &DA03
 
-
-
-		; zero page 2 as per cold reset
-		lea	oswksp_VDU_VERTADJ,A0
-		moveq	#mosvar_SOUND_SEMAPHORE-oswksp_VDU_VERTADJ-1,D1
-.cm0		clr.b	(A0)+
-		dbf	D1,.cm0
-		moveq	#vduvar_GRA_WINDOW-mosvar_SOUND_SEMAPHORE-1,D1
-.cm1		st.b	(A0)+
-		dbf	D1,.cm1
-
-		; boot bodges for not cleared memory faults
-		clr.b	oswksp_VDU_INTERLACE
-		clr.b	oswksp_VDU_VERTADJ
-		clr.b	sysvar_VDU_Q_LEN		; should be set in buffer flush somewhere early in boot?
-
+mos_handle_res_skip_clear_mem1
+		; do full memory clear here?
+mos_handle_res_skip_clear_mem2
 		move.b	#$0F,sheila_SYSVIA_ddrb
+
+ *************************************************************************
+ *                                                                       *
+ *        set addressable latch IC 32 for peripherals via PORT B         *
+ *                                                                       *
+ *       ;bit 3 set sets addressed latch high adds 8 to VIA address      *
+ *       ;bit 3 reset sets addressed latch low                           *
+ *                                                                       *
+ *       Peripheral              VIA bit 3=0             VIA bit 3=1     *
+ *                                                                       *
+ *       Sound chip              Enabled                 Disabled        *
+ *       speech chip (RS)        Low                     High            *
+ *       speech chip (WS)        Low                     High            *
+ *       Keyboard Auto Scan      Disabled                Enabled         *
+ *       C0 address modifier     Low                     High            * NOTE: Not used on 6809
+ *       C1 address modifier     Low                     High            * NOTE: Not used on 6809
+ *       Caps lock  LED          ON                      OFF             *
+ *       Shift lock LED          ON                      OFF             *
+ *                                                                       *
+ *       C0 & C1 are involved with hardware scroll screen address        * NOTE: Not used on 6809
+ *************************************************************************
+		moveq	#$F,D1				;B=&F on entry
+.l1		subq.w	#1,D1				;loop start
+		move.b	D1,sheila_SYSVIA_orb		;Write latch IC32
+		cmp.b	#$09,D1				;Is it 9?
+		bhs	.l1				;If not go back and do it again
+							;B=8 at this point
+							;Caps Lock On, SHIFT Lock undetermined
+							;Keyboard Autoscan on
+							;Sound disabled (may still sound)
+		clr.b	sysvar_BREAK_LAST_TYPE		;Clear last BREAK flag
+		moveq	#9,D0				;B=9
+LDA11		move.b	D0,D1				;
+		bsr	keyb_check_key_code_API		;Interrogate keyboard
+		roxl.b	#1,D1
+		roxr.w	#1,D2				;rotate MSB into bit 7 of &FC
+							;Get back value of X for loop
+		subq	#1,D0				;Decrement it
+		bne	LDA11				;and if >0 do loop again
+							;On exit if Carry set link 3 is made
+							;link 2 = bit 0 of &FC and so on
+							;If CTRL pressed bit 7 of &FC=1 X=0
+		lsr.w	#7,D2				;CTRL is now in bit 8 7..0 is keyboard links	
+		move.b	D2,zp_mos_INT_A			;Save keyboard links for later
+		bsr	x_Turn_on_Keyboard_indicators_API	;Set LEDs
+							;Carry set on entry is in bit 0 of A on exit
+							;Get carry back into carry flag
+
+
+x_set_up_page_2
+		lea	oswksp_OSWORD3_CTDOWN,A0
+		lea	sysvar_BREAK_LAST_TYPE,A1
+;;	puls	A					;get back A from &D9DB
+		tst.b	D4				;if A=0 power up reset so DA36 with X=&9C Y=&8D
+		beq	.s1
+
+		lea	sysvar_FX238,A1				;else Y=&7E
+		bcc	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
+		lea	sysvar_BREAK_VECTOR_JMP,A1		;else Y=&87 COLD RESET
+		addq.b	#1,sysvar_BREAK_LAST_TYPE		;&28D=1
+.s1		addq.b	#1,sysvar_BREAK_LAST_TYPE		;&28D=&28D+1
+								;get keyboard links set
+		not.b	D4					;invert
+		move.b	D4,sysvar_STARTUP_OPT			;and store at &28F
+		lea	oswksp_VDU_VERTADJ,A0			;X=&90
+
+		DEBUG_INFO	"Setup page 2"
+
+;; : set up page 2; on entry	   &28D=0 Warm reset, X=&9C, Y=&7E ; &28D=1 Power up  , X=&90, Y=&8D ; &28D=2 Cold reset, X=&9C, Y=&87 
+x_set_up_page_2_2
+		clr.b	D0
+x_setup_pg2_lp0	
+		cmpa	#mosvar_SOUND_SEMAPHORE,A0		;zero &200+X to &2CD
+		blo	x_setup_pg2_sk1				;	DA46
+		st.b	D0					;then set &2CE to &2FF to &FF
+x_setup_pg2_sk1
+		move.b	D0,(A0)+				;LDA4A
+		cmpa	#vduvars_start,A0
+		bne	x_setup_pg2_lp0			;	DA4E
+
+		move.b	D0,sheila_USRVIA_ddra		;	DA50
+
+		DEBUG_INFO	"Setup zp"
+
+		lea	zp_cfs_w,A0
+LDA56		clr.b	(A0)+				;zero zeropage &E2 to &FF
+		cmpa	$200,A0				; remember zero page is in page 1!
+		bne	LDA56				;	DA59
+
+
+		DEBUG_INFO	"Setup vectors"
+
+		; note 200-236 unused and uncleared
+		
+		lea	mostbl_SYSVAR_DEFAULT_SETTINGS(PC),A0
+		lea	sysvar_OSVARADDR,A2		
+
+LDA5B		move.b	(A0)+,(A2)+
+		cmpa	A2,A1
+		bne	LDA5B
+
+		move.b	$62,zp_mos_keynumfirst		;	DA66
+	
+
+;;HEREHERHERERERE
+;;
+;;	IF MACH_BEEB
+;;		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
+;;	ENDIF
+
+
+
 
 
 		; copy os vector default entries
@@ -128,6 +241,9 @@ handle_res:
 		moveq	#((256-(VECTOR_END-VECTOR_START))/4)-1,D0
 .vlp2		clr.l	(A0)+
 		dbf	D0,.vlp2
+
+
+		SWI	XOS_IntOn			; enable interrupts
 
 		moveq	#2,D0				; init mode 0
 		bsr	mos_VDU_init
@@ -271,31 +387,17 @@ handle_int_spur:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_int_spur,PC),A0
 		bra	intmsg
-handle_int_1:
+
+
+handle_int_IRQ:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_int_1,PC),A0
 		bra	intmsg
-handle_int_2:
+handle_int_NMI:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_int_2,PC),A0
 		bra	intmsg
-handle_int_3:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_3,PC),A0
-		bra	intmsg
-handle_int_4:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_4,PC),A0
-		bra	intmsg
-handle_int_5:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_5,PC),A0
-		bra	intmsg
-handle_int_6:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_6,PC),A0
-		bra	intmsg
-handle_int_7:
+handle_int_DEBUG:
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_IRQ_x+7,D0
 		bra	deice_enter
@@ -303,8 +405,8 @@ handle_int_7:
 handle_trap_0:
 		; TODO restore user mode before call OS_GenerateError?
 		lea.l	2(SP),SP
-		move.l	(SP),A0
-		bra	SWI_OS_Generate_Error
+		move.l	(SP),D0
+		bra	SWI_OS_GenerateError
 
 
 ********************************************************************************
@@ -374,13 +476,13 @@ SWI_Handle_D7
 		move.l	A6, $0C(SP)			; when we return from SWI go here
 
 		bclr.l	#17,D7				; clear X bit
-		cmp.l	#$10,D7
+		cmp.l	#$20,D7
 		bhs	FindSwi1	
 		asl.w	#2,D7
 		lea.l	SWI_TABLE_LOW(PC),A6
 		lea.l	(A6,D7.w),A6
-		move.l	(A6),D7
-		lea.l	(A6,D7.l),A6
+		move.w	(A6),D7
+		lea.l	(A6,D7.w),A6
 SWI_Call_A6
 		move.l	A6,$08(SP)
 
@@ -397,23 +499,54 @@ FindSwi1	cmp.l	#$100,D7
 SWI_NOWT	CLV
 		rts
 
-SWI_TABLE_LOW	dc.l	SWI_OS_WriteC-*
-		dc.l	SWI_OS_WriteS-*
-		dc.l	SWI_OS_Write0-*
-		dc.l	SWI_OS_NewLine-*
-		dc.l	SWI_NOWT-*
-		dc.l	SWI_NOWT-*
-		dc.l	SWI_NOWT-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
-		dc.l	SWI_UKSwi-*
+SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
+		dc.w	SWI_OS_WriteS-*			; 01
+		dc.w	SWI_OS_Write0-*			; 02
+		dc.w	SWI_OS_NewLine-*		; 03
+		dc.w	SWI_NOWT-*			; 04
+		dc.w	SWI_NOWT-*			; 05
+		dc.w	SWI_NOWT-*			; 06
+		dc.w	SWI_UKSwi-*			; 07
+		dc.w	SWI_UKSwi-*			; 08
+		dc.w	SWI_UKSwi-*			; 09
+		dc.w	SWI_UKSwi-*			; 0A
+		dc.w	SWI_UKSwi-*			; 0B
+		dc.w	SWI_UKSwi-*			; 0C
+		dc.w	SWI_UKSwi-*			; 0D
+		dc.w	SWI_UKSwi-*			; 0E
+		dc.w	SWI_UKSwi-*			; 0F
+		dc.w	SWI_UKSwi-*			; 10
+		dc.w	SWI_UKSwi-*			; 11
+		dc.w	SWI_UKSwi-*			; 12
+		dc.w	SWI_OS_IntOn-*			; 13
+		dc.w	SWI_OS_IntOff-*			; 14
+		dc.w	SWI_UKSwi-*			; 15
+		dc.w	SWI_UKSwi-*			; 16
+		dc.w	SWI_UKSwi-*			; 17
+		dc.w	SWI_UKSwi-*			; 18
+		dc.w	SWI_UKSwi-*			; 19
+		dc.w	SWI_UKSwi-*			; 1A
+		dc.w	SWI_UKSwi-*			; 1B
+		dc.w	SWI_UKSwi-*			; 1C
+		dc.w	SWI_UKSwi-*			; 1D
+		dc.w	SWI_UKSwi-*			; 1E
+		dc.w	SWI_UKSwi-*			; 1F
+		dc.w	SWI_UKSwi-*			; 20
+		dc.w	SWI_UKSwi-*			; 21
+		dc.w	SWI_UKSwi-*			; 22
+		dc.w	SWI_UKSwi-*			; 23
+		dc.w	SWI_UKSwi-*			; 24
+		dc.w	SWI_UKSwi-*			; 25
+		dc.w	SWI_UKSwi-*			; 26
+		dc.w	SWI_UKSwi-*			; 27
+		dc.w	SWI_UKSwi-*			; 28
+		dc.w	SWI_UKSwi-*			; 29
+		dc.w	SWI_UKSwi-*			; 2A
+		dc.w	SWI_UKSwi-*			; 2B
+		dc.w	SWI_OS_GenerateError-*		; 2C
+		dc.w	SWI_UKSwi-*			; 2D
+		dc.w	SWI_UKSwi-*			; 2E
+		dc.w	SWI_UKSwi-*			; 2F
 
 
 
@@ -437,13 +570,22 @@ SWI_Exit
 SWI_Exit_Error	; an error occurred work out if original SWI was an error returning one
 		; swi number should be TOS
 		btst.b	#1,1(SP)			; check error returning bit (bit #17 of SWI number)
-		beq	SWI_OS_Generate_Error
+		beq	CallErrorV
 		bset	#1,$05(SP)			; set V flag
 		lea.l	4(SP),SP
 		rte
 
-SWI_OS_Generate_Error
-		move.l	(BRKV),-(SP)
+CallErrorV
+		jmp	(BRKV)
+
+
+SWI_OS_GenerateError
+		SEV
+		rts
+
+SWI_OS_IntOn	andi.w	#$F8FF,8(SP)
+		rts
+SWI_OS_IntOff	ori.w	#$0700,8(SP)
 		rts
 		
 

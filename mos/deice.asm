@@ -20,7 +20,7 @@ deice_init
 deice_print
 		movem.l	D0/D4/D5,-(A7)
 		and.b	#$7F,D0
-		jsr	PUTCHAR
+		bsr	PUTCHAR
 		movem.l (A7)+,D0/D4/D5
 		rts
 
@@ -235,7 +235,7 @@ GLP		move.b	(A1)+,(A0)+		; GET BYTE and STORE TO RETURN BUFFER
 		dbf	D1,GLP
 *
 *  Compute checksum on buffer, and send to master, then return
-GLP90		JMP	SEND
+GLP90		bra	SEND
 
 
 *===========================================================================
