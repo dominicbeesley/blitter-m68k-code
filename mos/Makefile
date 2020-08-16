@@ -1,8 +1,8 @@
-AS=vasmm68k_mot_win32.exe
+AS=vasmm68k_mot.exe
 ASFLAGS=-pic -m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 
-TARGETS=mos68k.bin
+TARGETS=mos68k.bin mos68k.noi
 DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
 
 OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o defaultosvectors.o interrupts.o keyboard.o defaultsysvars.o
@@ -10,8 +10,8 @@ OBJS2=$(addprefix obj/, $(OBJS))
 
 all:: $(TARGETS)
 
-mos68k.bin: $(OBJS2)
-	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $^ > mos68k.sym
+mos68k.bin mos68k.noi: $(OBJS2)
+	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $(OBJS2) > mos68k.sym
 	cp $@ /cygdrive/d/cygwin64/home/dominic/hostfs/test68008
 	../scripts/getsymbols.pl <$(basename $@).sym >$(basename $@).noi
 	if [[ -e debugsyms.noi ]]; then \

@@ -50,6 +50,11 @@
 
 		macro DEBUG_INFO
 
+		jsr	deice_print_str
+		dc.b	\1
+		dc.b	0
+		align	1
+
 		endm
 
 
@@ -95,8 +100,6 @@ handle_res:
 .sk		moveq	#13,D0
 		bsr	deice_print
 .nomsg	
-		ori.w	#$8000,SR ; TRACE
-
 		move.b	sheila_SYSVIA_ier,D0
 		asl.b	#1,D0
 		move.b	D0,D4				; save this for later
@@ -197,8 +200,10 @@ x_setup_pg2_sk1
 		DEBUG_INFO	"Setup zp"
 
 		lea	zp_cfs_w,A0
+
+
 LDA56		clr.b	(A0)+				;zero zeropage &E2 to &FF
-		cmpa	$200,A0				; remember zero page is in page 1!
+		cmpa	#$200,A0			; remember zero page is in page 1!
 		bne	LDA56				;	DA59
 
 
@@ -242,6 +247,8 @@ LDA5B		move.b	(A0)+,(A2)+
 .vlp2		clr.l	(A0)+
 		dbf	D0,.vlp2
 
+
+		ori.w	#$8000,SR ; TRACE
 
 		SWI	XOS_IntOn			; enable interrupts
 
@@ -478,7 +485,7 @@ SWI_Handle_D7
 		bclr.l	#17,D7				; clear X bit
 		cmp.l	#$20,D7
 		bhs	FindSwi1	
-		asl.w	#2,D7
+		asl.w	#1,D7
 		lea.l	SWI_TABLE_LOW(PC),A6
 		lea.l	(A6,D7.w),A6
 		move.w	(A6),D7
@@ -575,8 +582,8 @@ SWI_Exit_Error	; an error occurred work out if original SWI was an error returni
 		lea.l	4(SP),SP
 		rte
 
-CallErrorV
-		jmp	(BRKV)
+CallErrorV	move.l	(BRKV),A1
+		jmp	(A1)
 
 
 SWI_OS_GenerateError

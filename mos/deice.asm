@@ -1,6 +1,7 @@
 		xdef		deice_init
 		xdef		deice_enter
 		xdef		deice_print
+		xdef		deice_print_str
 
 		include		"hardware.inc"
 		include		"deice.inc"
@@ -16,6 +17,20 @@ deice_init
 		clr.b	deice_run_flag
 		rts
 
+
+deice_print_str
+		movem.l D0/A0,-(A7)
+		move.l  8(A7),A0
+.lp:		move.b  (A0)+,D0
+		beq	.sk
+		bsr	deice_print
+		bra	.lp		
+.sk:		move.l	A0,D0
+		addq	#1,D0
+		and.l	#$FFFFFFFE,D0
+		move.l  D0,8(A7)
+		movem.l (A7)+,D0/A0
+		rts
 
 deice_print
 		movem.l	D0/D4/D5,-(A7)
