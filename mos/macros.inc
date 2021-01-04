@@ -1,4 +1,24 @@
 
+		macro DEBUG_INFO
+		jsr	deice_print_str
+		dc.b	\1
+		dc.b	13
+		dc.b	0
+		align	1
+		endm
+
+		macro DEBUG_INFO_S
+		jsr	deice_print_str
+		dc.b	\1
+		dc.b	0
+		align	1
+		endm
+
+
+		macro TRACE
+		ori.w	#$8000,SR
+		endm
+
 		macro   CLC
 		andi	#-2,CCR
 		endm	CLC

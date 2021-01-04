@@ -55,215 +55,13 @@
 
 		xdef		callWRCHV
 
+		xdef		kernel_go_todo
+		xdef		intmsg
+
 		SECTION "code"
 
 
-		macro DEBUG_INFO
-
-		jsr	deice_print_str
-		dc.b	\1
-		dc.b	0
-		align	1
-
-		endm
-
-
- **************************************************************************
- **************************************************************************
- **                                                                      **
- **                                                                      **
- **      RESET (BREAK) ENTRY POINT                                       **
- **                                                                      **
- **      Power up Enter with nothing set, 6522 System VIA IER bits       **
- **      0 to 6 will be clear                                            **
- **                                                                      **
- **      BREAK IER bits 0 to 6 one or more will be set 6522 IER          **
- **      not reset by BREAK                                              **
- **                                                                      **
- **************************************************************************
-
-handle_res:	
-		; copy rom vectors to low memory
-		lea	(romv_start,PC),A6
-		movea	#0, A0
-		moveq	#$63, D0
-.lp:		move.l	(A6)+,(A0)+
-		dbf	D0,.lp
-
-		; switch maps by temporarily selecting blitter device
-		move.b	#JIM_DEVNO_BLITTER,(fred_JIM_DEVNO)
-		clr.b	(fred_JIM_DEVNO)
-
-		move.w	#$4E73,vec_nmi						; set rte in nmi space start
-		ori.w	#$0700,SR						; disable interrupts
-
-		; initialise DEICE monitor - TODO: move this to utility ROM 
-		bsr	deice_init
-
-		; test deice_print
-		lea.l	test_d,A0
-.lp2		move.b	(A0)+,D0
-		beq	.sk
-		bsr	deice_print
-		bcc	.nomsg
-		bra	.lp2
-.sk		moveq	#13,D0
-		bsr	deice_print
-.nomsg	
-		move.b	sheila_SYSVIA_ier,D0
-		asl.b	#1,D0
-		move.b	D0,D4				; save this for later
-		beq	mos_handle_res_skip_clear_mem1	; it's a power boot do a full clear
-
-		move.b	sysvar_BREAK_EFFECT,D0		;else if BREAK pressed read BREAK Action flags (set by
-							;*FX200,n) 
-		lsr	#1,D0				;divide by 2
-		cmp.b	#$01,D0				;if (bit 1 not set by *FX200)
-		bne	mos_handle_res_skip_clear_mem2	;then &DA03
-
-mos_handle_res_skip_clear_mem1
-		; do full memory clear here?
-mos_handle_res_skip_clear_mem2
-		move.b	#$0F,sheila_SYSVIA_ddrb
-
- *************************************************************************
- *                                                                       *
- *        set addressable latch IC 32 for peripherals via PORT B         *
- *                                                                       *
- *       ;bit 3 set sets addressed latch high adds 8 to VIA address      *
- *       ;bit 3 reset sets addressed latch low                           *
- *                                                                       *
- *       Peripheral              VIA bit 3=0             VIA bit 3=1     *
- *                                                                       *
- *       Sound chip              Enabled                 Disabled        *
- *       speech chip (RS)        Low                     High            *
- *       speech chip (WS)        Low                     High            *
- *       Keyboard Auto Scan      Disabled                Enabled         *
- *       C0 address modifier     Low                     High            * NOTE: Not used on 6809
- *       C1 address modifier     Low                     High            * NOTE: Not used on 6809
- *       Caps lock  LED          ON                      OFF             *
- *       Shift lock LED          ON                      OFF             *
- *                                                                       *
- *       C0 & C1 are involved with hardware scroll screen address        * NOTE: Not used on 6809
- *************************************************************************
-		moveq	#$F,D1				;B=&F on entry
-.l1		subq.w	#1,D1				;loop start
-		move.b	D1,sheila_SYSVIA_orb		;Write latch IC32
-		cmp.b	#$09,D1				;Is it 9?
-		bhs	.l1				;If not go back and do it again
-							;B=8 at this point
-							;Caps Lock On, SHIFT Lock undetermined
-							;Keyboard Autoscan on
-							;Sound disabled (may still sound)
-		clr.b	sysvar_BREAK_LAST_TYPE		;Clear last BREAK flag
-		moveq	#9,D0				;B=9
-LDA11		move.b	D0,D1				;
-		bsr	keyb_check_key_code_API		;Interrogate keyboard
-		roxl.b	#1,D1
-		roxr.w	#1,D2				;rotate MSB into bit 7 of &FC
-							;Get back value of X for loop
-		subq	#1,D0				;Decrement it
-		bne	LDA11				;and if >0 do loop again
-							;On exit if Carry set link 3 is made
-							;link 2 = bit 0 of &FC and so on
-							;If CTRL pressed bit 7 of &FC=1 X=0
-		lsr.w	#7,D2				;CTRL is now in bit 8 7..0 is keyboard links	
-		move.b	D2,zp_mos_INT_A			;Save keyboard links for later
-		bsr	x_Turn_on_Keyboard_indicators_API	;Set LEDs
-							;Carry set on entry is in bit 0 of A on exit
-							;Get carry back into carry flag
-
-
-x_set_up_page_2
-		lea	oswksp_OSWORD3_CTDOWN,A0
-		lea	sysvar_BREAK_LAST_TYPE,A1
-;;	puls	A					;get back A from &D9DB
-		tst.b	D4				;if A=0 power up reset so DA36 with X=&9C Y=&8D
-		beq	.s1
-
-		lea	sysvar_FX238,A1				;else Y=&7E
-		bcc	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
-		lea	sysvar_BREAK_VECTOR_JMP,A1		;else Y=&87 COLD RESET
-		addq.b	#1,sysvar_BREAK_LAST_TYPE		;&28D=1
-.s1		addq.b	#1,sysvar_BREAK_LAST_TYPE		;&28D=&28D+1
-								;get keyboard links set
-		not.b	D4					;invert
-		move.b	D4,sysvar_STARTUP_OPT			;and store at &28F
-		lea	oswksp_VDU_VERTADJ,A0			;X=&90
-
-		DEBUG_INFO	"Setup page 2"
-
-;; : set up page 2; on entry	   &28D=0 Warm reset, X=&9C, Y=&7E ; &28D=1 Power up  , X=&90, Y=&8D ; &28D=2 Cold reset, X=&9C, Y=&87 
-x_set_up_page_2_2
-		clr.b	D0
-x_setup_pg2_lp0	
-		cmpa	#mosvar_SOUND_SEMAPHORE,A0		;zero &200+X to &2CD
-		blo	x_setup_pg2_sk1				;	DA46
-		st.b	D0					;then set &2CE to &2FF to &FF
-x_setup_pg2_sk1
-		move.b	D0,(A0)+				;LDA4A
-		cmpa	#vduvars_start,A0
-		bne	x_setup_pg2_lp0			;	DA4E
-
-		move.b	D0,sheila_USRVIA_ddra		;	DA50
-
-		DEBUG_INFO	"Setup zp"
-
-		lea	zp_cfs_w,A0
-
-
-LDA56		clr.b	(A0)+				;zero zeropage &E2 to &FF
-		cmpa	#$200,A0			; remember zero page is in page 1!
-		bne	LDA56				;	DA59
-
-
-		DEBUG_INFO	"Setup vectors"
-
-		; note 200-236 unused and uncleared
-		
-		lea	mostbl_SYSVAR_DEFAULT_SETTINGS(PC),A0
-		lea	sysvar_OSVARADDR,A2		
-
-LDA5B		move.b	(A0)+,(A2)+
-		cmpa	A2,A1
-		bne	LDA5B
-
-		move.b	$62,zp_mos_keynumfirst		;	DA66
-	
-
-;;HEREHERHERERERE
-;;
-;;	IF MACH_BEEB
-;;		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
-;;	ENDIF
-
-
-
-
-
-		; copy os vector default entries
-		lea.l	VECTOR_START,A0
-		moveq	#((VECTOR_END-VECTOR_START)/4)-1,D0
-		lea.l	defaultosvectors(PC),A1
-
-.vlp		move.l	(A1)+,A2
-		adda.l	A1,A2
-		suba.l	#4,A2
-		move.l	A2,(A0)+
-		dbf	D0,.vlp
-
-		; clear rest of vectors
-		moveq	#((256-(VECTOR_END-VECTOR_START))/4)-1,D0
-.vlp2		clr.l	(A0)+
-		dbf	D0,.vlp2
-
-
-
-;		SWI	XOS_IntOn			; enable interrupts
-
-		moveq	#1,D0				; init mode 0
-		bsr	mos_VDU_init
-
+kernel_go_todo
 
 		XWRITES	"HELLO ISHBEL"
 
@@ -308,15 +106,15 @@ LDA5B		move.b	(A0)+,(A2)+
 
 		
 PrHex_l:	swap	D0
-		jsr	PrHex_w
+		bsr	PrHex_w
 		swap	D0
 PrHex_w:	move.w	D0,-(A7)
 		asr.w	#8,D0
-		jsr	PrHex_b
+		bsr	PrHex_b
 		move.w	(A7)+,D0
 PrHex_b:	move.b,	D0,-(A7)
 		asr.b	#4,D0
-		jsr	PrHex_nyb
+		bsr	PrHex_nyb
 		move.b	(A7)+,D0	
 PrHex_nyb:	move.b	D0,-(A7)
 		andi.b	#$F,D0
@@ -332,15 +130,15 @@ PrHex_nyb:	move.b	D0,-(A7)
 
 
 d_PrHex_l:	swap	D0
-		jsr	d_PrHex_w
+		bsr	d_PrHex_w
 		swap	D0
 d_PrHex_w:	move.w	D0,-(A7)
 		asr.w	#8,D0
-		jsr	d_PrHex_b
+		bsr	d_PrHex_b
 		move.w	(A7)+,D0
 d_PrHex_b:	move.b,	D0,-(A7)
 		asr.b	#4,D0
-		jsr	d_PrHex_nyb
+		bsr	d_PrHex_nyb
 		move.b	(A7)+,D0	
 d_PrHex_nyb:	move.b	D0,-(A7)
 		andi.b	#$F,D0
@@ -365,11 +163,11 @@ PrString:	move.b	(A0)+,D0
 handle_bus_err:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_bus_err,PC),A0
-		bra	intmsg
+		bra	intmsg_bus
 handle_addr_err:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_addr_err,PC),A0
-		bra	intmsg
+		bra	intmsg_bus
 handle_illegal:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_illegal,PC),A0
@@ -408,10 +206,6 @@ handle_int_spur:
 		bra	intmsg
 
 
-handle_int_IRQ:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_1,PC),A0
-		bra	intmsg
 handle_int_NMI:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_int_2,PC),A0
@@ -512,14 +306,40 @@ handle_trap_15:
 
 
 
+intmsg_bus:
+		bsr	PrString
+
+		moveq	#13,D0
+		bsr	deice_print
+
+		DEBUG_INFO_S "CYC:"
+		move.w	0(A7),D0
+		bsr	d_PrHex_w	
+		moveq	#13, D0
+		bsr	deice_print
+		DEBUG_INFO_S "ADD:"
+		move.l	2(A7),D0
+		bsr	d_PrHex_l	
+		moveq	#13, D0
+		bsr	deice_print
+		DEBUG_INFO_S "INS:"
+		move.w	6(A7),D0
+		bsr	d_PrHex_w	
+		moveq	#13, D0
+		bsr	deice_print
+		moveq.l	#8,D3
+		bra	bussk2
+
 intmsg
 		bsr	PrString
 
 		moveq	#13,D0
 		bsr	deice_print
 
+		clr.l	D3
+bussk2:
 		clr.b	D2
-		clr.w	D3
+
 intmsg_lp0:	
 		moveq	#'D',D0
 		bsr	deice_print
@@ -567,7 +387,8 @@ intmsg_lp0:
 		bsr	deice_print
 
 		move	A7,D0
-		add.l	#66,D0
+		add.l	D3,D0
+		add.l	#66-28,D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -598,7 +419,7 @@ intmsg_lp0:
 		moveq	#' ',D0
 		bsr	deice_print
 
-		move.l	62(A7),D0
+		move.l	34(A7,D3.w),D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -612,7 +433,7 @@ intmsg_lp0:
 		bsr	deice_print
 		bsr	deice_print
 
-		move.w	60(A7),D0
+		move.w	32(A7,D3.w),D0
 		bsr	d_PrHex_w
 
 		moveq	#13,D0
@@ -654,7 +475,6 @@ str_trace:	dc.b	"trace",0
 str_opA:	dc.b	"opA",0
 str_opF:	dc.b	"opF",0
 str_int_spur:	dc.b	"int_spur",0
-str_int_1:	dc.b	"int_1",0
 str_int_2:	dc.b	"int_2",0
 str_int_3:	dc.b	"int_3",0
 str_int_4:	dc.b	"int_4",0

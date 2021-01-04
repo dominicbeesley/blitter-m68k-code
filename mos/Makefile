@@ -5,7 +5,7 @@ ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 TARGETS=mos68k.bin mos68k.noi
 DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
 
-OBJS=font.o vdu.o kernel.o kernel_swi.o romheader.o romvectors.o deice.o defaultosvectors.o interrupts.o keyboard.o defaultsysvars.o
+OBJS=font.o vdu.o kernel.o kernel_swi.o romheader.o romvectors.o deice.o defaultosvectors.o interrupts.o keyboard.o defaultsysvars.o kernel_reset.o kernel_interrupts.o
 OBJS2=$(addprefix obj/, $(OBJS))
 
 HOSTFSDIR=~/hostfs/test68008

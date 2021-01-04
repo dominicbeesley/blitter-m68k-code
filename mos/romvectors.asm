@@ -5,7 +5,7 @@
 		SECTION "romvectors"
 romv_start:	
 romv_stack:	dc.l	STACK
-romv_reset:	dc.l	handle_res
+romv_reset:	dc.l	kernel_handle_res
 romv_be:	dc.l	handle_bus_err
 romv_addr_err:	dc.l	handle_addr_err
 romv_illegal:	dc.l	handle_illegal
@@ -18,8 +18,8 @@ romv_opA:	dc.l	handle_opA
 romv_opF:	dc.l	handle_opF
 		blk.l	12,0
 romv_int_spur	dc.l	handle_int_spur
-romv_int_1	dc.l	handle_int_IRQ
-romv_int_2	dc.l	handle_int_IRQ
+romv_int_1	dc.l	kernel_handle_IRQ
+romv_int_2	dc.l	kernel_handle_IRQ
 romv_int_3	dc.l	handle_int_NMI
 romv_int_4	dc.l	handle_int_NMI
 romv_int_5	dc.l	handle_int_NMI
