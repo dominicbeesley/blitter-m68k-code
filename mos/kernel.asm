@@ -1,4 +1,12 @@
-;; (c) 2019 Dossytronics, Dominic Beesley
+;; (c) 2021 Dossytronics, Dominic Beesley
+;
+;
+; As of 3/1/2021 - now uses the ABI as outlined for CiscOS - see:
+; - http://mdfs.net/Software/Tube/68000/
+; - http://beebwiki.mdfs.net/68000_Second_Processor
+
+
+
 
 		include "mos.inc"
 		include "oslib.inc"
@@ -33,17 +41,19 @@
 		xdef		handle_trap_7
 		xdef		handle_trap_8
 		xdef		handle_trap_9
-		xdef		handle_trap_A
-		xdef		handle_trap_B
-		xdef		handle_trap_C
-		xdef		handle_trap_D
-		xdef		handle_trap_E
-		xdef		handle_trap_F
+		xdef		handle_trap_10
+		xdef		handle_trap_11
+		xdef		handle_trap_12
+		xdef		handle_trap_13
+		xdef		handle_trap_14
+		xdef		handle_trap_15
 
 		xdef		brkBadCommand
 
 		xdef		mos_DEFAULT_BRK_HANDLER
 		xdef		mos_WRCH_default_entry
+
+		xdef		callWRCHV
 
 		SECTION "code"
 
@@ -248,12 +258,12 @@ LDA5B		move.b	(A0)+,(A2)+
 		dbf	D0,.vlp2
 
 
-		ori.w	#$8000,SR ; TRACE
 
-		SWI	XOS_IntOn			; enable interrupts
+;		SWI	XOS_IntOn			; enable interrupts
 
-		moveq	#2,D0				; init mode 0
+		moveq	#1,D0				; init mode 0
 		bsr	mos_VDU_init
+
 
 		XWRITES	"HELLO ISHBEL"
 
@@ -263,11 +273,14 @@ LDA5B		move.b	(A0)+,(A2)+
 .lll3		move.b	D0,(A0)+
 		dbf	D0,.lll3
 
-		move.w	#255,D1
-		lea.l	test_d,A0
-.lll4		move.l	A0,D0
+
+		move.w	#100,D1
+		
+		lea.l	test_d,A1
+.lll4		move.l	A1,D0
 		SWI	OS_Write0
 		dbf	D1,.lll4
+
 
 
 		moveq	#0,D4
@@ -275,7 +288,6 @@ LDA5B		move.b	(A0)+,(A2)+
 		bsr	PrHex_l
 
 		SWI	OS_NewLine
-
 
 		SWI	OS_WriteI+17
 		move.b	D4,D0
@@ -409,191 +421,13 @@ handle_int_DEBUG:
 		moveq	#DEICE_STATE_IRQ_x+7,D0
 		bra	deice_enter
 
+;;TODO: Keep this or insist on call SWI_OS_GenerateError?
 handle_trap_0:
 		; TODO restore user mode before call OS_GenerateError?
 		lea.l	2(SP),SP
 		move.l	(SP),D0
-		bra	SWI_OS_GenerateError
+		SWI	OS_GenerateError
 
-
-********************************************************************************
-* SWI dispatch and handling                                                    *
-*                                                                              *
-* SWIs are emulated using TRAPS#1 and #2, #1 is a shortcut for the longer      *
-* #2 form with but uses fewer bytes in the program as the SWI number is        *
-* encoded in fewer (16 bits) instead of 24                                     *
-*                                                                              *
-* TRAP #2                                                                      *
-* dc.l 24 bit SWI number (in 32bit field)                                      *
-*                                                                              *
-* TRAP #1                                                                      *
-* dc.w 16 bit SWI number (encoded bit 15=X flag, 14..0 as SWI no)              *
-*                                                                              *
-* All SWI parameters are passed in D0..D7                                      *
-* All Address register should be preserved                                     *
-*                                                                              *
-*                                                                              *
-*                                                                              *
-*                                                                              *
-********************************************************************************
-
-
-handle_trap_1:
-		lea.l	-12(SP),SP			; reserve space on stack for SWI number, SWI exit and swi routine address		
-		movem.l	D7/A6,-(SP)
-
-		; get swi number in D0 and adjust stacked PC
-		clr.l	D7
-		move.l	22(SP),A6			; get return address
-		move.w	(A6)+,D7			; load word after trap
-		ext.l	D7				; sign extend number (not for 16bit swi's X bit is bit 15)
-		and.l	#$00027FFF,D7			; mask off unwanted but keep X extended into bit 17
-		bra	SWI_Handle_D7
-
-handle_trap_2:
-		lea.l	-12(SP),SP			; reserve space on stack for SWI number, SWI exit and swi routine address		
-		movem.l	D0/A6,-(SP)
-		; get swi number in D0 and adjust stacked PC
-		move.l	22(SP),A6
-		move.l	(A6)+,D7
-SWI_Handle_D7
-
-	;STACK:
-	;+-----+---+----------------------------------------+
-	;| +16 | l | Original PC (points at SWI number WORD |
-	;+-----+---+----------------------------------------+
-	;| +14 | w | Original SR                            |
-	;+-----+---+----------------------------------------+
-	;| +10 | l | reserved for SWI number                |
-	;+-----+---+----------------------------------------+
-	;| +0C | l | reserved for return to SWI exit        |
-	;+-----+---+----------------------------------------+
-	;| +08 | l | reserved for SWI routine addr          |
-	;+-----+---+----------------------------------------+
-	;| +04 | l | old A6                                 |
-	;+-----+---+----------------------------------------+
-	;| +00 | l | old D7                                 |
-	;+-----+---+----------------------------------------+
-
-
-		move.l	A6,$16(SP)			; adjust return address		
-		move.l	D7,$10(SP)			; now save SWI number on the stack
-
-		lea.l	SWI_Exit(PC),A6
-		move.l	A6, $0C(SP)			; when we return from SWI go here
-
-		bclr.l	#17,D7				; clear X bit
-		cmp.l	#$20,D7
-		bhs	FindSwi1	
-		asl.w	#1,D7
-		lea.l	SWI_TABLE_LOW(PC),A6
-		lea.l	(A6,D7.w),A6
-		move.w	(A6),D7
-		lea.l	(A6,D7.w),A6
-SWI_Call_A6
-		move.l	A6,$08(SP)
-
-		movem.l	(SP)+,D7/A6			; restore A6,D7
-		rts					; call swi stacked
-
-FindSwi1	cmp.l	#$100,D7
-		blo	FindSwi
-		cmp.l	#$200,D7
-		bhs	FindSwi
-		lea.l	SWI_OS_WriteI,A6
-		bra	SWI_Call_A6
-
-SWI_NOWT	CLV
-		rts
-
-SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
-		dc.w	SWI_OS_WriteS-*			; 01
-		dc.w	SWI_OS_Write0-*			; 02
-		dc.w	SWI_OS_NewLine-*		; 03
-		dc.w	SWI_NOWT-*			; 04
-		dc.w	SWI_NOWT-*			; 05
-		dc.w	SWI_NOWT-*			; 06
-		dc.w	SWI_UKSwi-*			; 07
-		dc.w	SWI_UKSwi-*			; 08
-		dc.w	SWI_UKSwi-*			; 09
-		dc.w	SWI_UKSwi-*			; 0A
-		dc.w	SWI_UKSwi-*			; 0B
-		dc.w	SWI_UKSwi-*			; 0C
-		dc.w	SWI_UKSwi-*			; 0D
-		dc.w	SWI_UKSwi-*			; 0E
-		dc.w	SWI_UKSwi-*			; 0F
-		dc.w	SWI_UKSwi-*			; 10
-		dc.w	SWI_UKSwi-*			; 11
-		dc.w	SWI_UKSwi-*			; 12
-		dc.w	SWI_OS_IntOn-*			; 13
-		dc.w	SWI_OS_IntOff-*			; 14
-		dc.w	SWI_UKSwi-*			; 15
-		dc.w	SWI_UKSwi-*			; 16
-		dc.w	SWI_UKSwi-*			; 17
-		dc.w	SWI_UKSwi-*			; 18
-		dc.w	SWI_UKSwi-*			; 19
-		dc.w	SWI_UKSwi-*			; 1A
-		dc.w	SWI_UKSwi-*			; 1B
-		dc.w	SWI_UKSwi-*			; 1C
-		dc.w	SWI_UKSwi-*			; 1D
-		dc.w	SWI_UKSwi-*			; 1E
-		dc.w	SWI_UKSwi-*			; 1F
-		dc.w	SWI_UKSwi-*			; 20
-		dc.w	SWI_UKSwi-*			; 21
-		dc.w	SWI_UKSwi-*			; 22
-		dc.w	SWI_UKSwi-*			; 23
-		dc.w	SWI_UKSwi-*			; 24
-		dc.w	SWI_UKSwi-*			; 25
-		dc.w	SWI_UKSwi-*			; 26
-		dc.w	SWI_UKSwi-*			; 27
-		dc.w	SWI_UKSwi-*			; 28
-		dc.w	SWI_UKSwi-*			; 29
-		dc.w	SWI_UKSwi-*			; 2A
-		dc.w	SWI_UKSwi-*			; 2B
-		dc.w	SWI_OS_GenerateError-*		; 2C
-		dc.w	SWI_UKSwi-*			; 2D
-		dc.w	SWI_UKSwi-*			; 2E
-		dc.w	SWI_UKSwi-*			; 2F
-
-
-
-
-SWI_Exit
-	;STACK:
-	;+-----+---+----------------------------------------+
-	;| +06 | l | Original PC (points at SWI number WORD |
-	;+-----+---+----------------------------------------+
-	;| +04 | w | Original SR                            |
-	;+-----+---+----------------------------------------+
-	;| +00 | l | reserved for SWI number                |
-	;+-----+---+----------------------------------------+
-
-		bvs	SWI_Exit_Error
-		bclr	#1,$05(SP)			; reset V flag in stacked SR
-		lea.l	4(SP),SP			; skip saved SWI #
-		rte					; return
-
-
-SWI_Exit_Error	; an error occurred work out if original SWI was an error returning one
-		; swi number should be TOS
-		btst.b	#1,1(SP)			; check error returning bit (bit #17 of SWI number)
-		beq	CallErrorV
-		bset	#1,$05(SP)			; set V flag
-		lea.l	4(SP),SP
-		rte
-
-CallErrorV	move.l	(BRKV),A1
-		jmp	(A1)
-
-
-SWI_OS_GenerateError
-		SEV
-		rts
-
-SWI_OS_IntOn	andi.w	#$F8FF,8(SP)
-		rts
-SWI_OS_IntOff	ori.w	#$0700,8(SP)
-		rts
 		
 
 mos_DEFAULT_BRK_HANDLER:
@@ -610,18 +444,15 @@ mos_DEFAULT_BRK_HANDLER:
 		bra	.lp
 .s1		stop	#$0
 
-FindSwi
-DoUKSwi		; fix up stack to just contain SWI number/SR/PC
-		lea.l	16(SP),SP
-SWI_UKSwi
-		lea.l	ErrBlk_UKSwi,A0
-		SEV
-		bra	SWI_Exit	
 
-ErrBlk_UKSwi	dc.l	$1e6
-		dc.b    "No Such SWI", 0
-
-
+handle_trap_1:
+		movem.l	D0-D7/A0-A6,-(A7)
+		lea	(str_trap_1,PC),A0
+		bra	intmsg
+handle_trap_2:
+		movem.l	D0-D7/A0-A6,-(A7)
+		lea	(str_trap_2,PC),A0
+		bra	intmsg
 handle_trap_3:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_trap_3,PC),A0
@@ -647,30 +478,34 @@ handle_trap_8:
 		lea	(str_trap_8,PC),A0
 		bra	intmsg
 handle_trap_9:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_trap_9,PC),A0
-		bra	intmsg
-handle_trap_A:
+		;TODO: handler - display message in DeIce and halt
+		move.l	2(SP),A0
+t9lp:		move.b	(A0)+,D0
+		beq	t9sk
+		bsr	deice_print
+		bra	t9lp
+t9sk:		bra	t9sk
+
+;		movem.l	D0-D7/A0-A6,-(A7)
+;		lea	(str_trap_9,PC),A0
+;		bra	intmsg
+handle_trap_10:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_trap_A,PC),A0
 		bra	intmsg
-handle_trap_B:
+handle_trap_11:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_trap_B,PC),A0
 		bra	intmsg
-handle_trap_C:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_trap_C,PC),A0
-		bra	intmsg
-handle_trap_D:
+handle_trap_13:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_trap_D,PC),A0
 		bra	intmsg
-handle_trap_E:
+handle_trap_14:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_trap_E,PC),A0
 		bra	intmsg
-handle_trap_F:
+handle_trap_15:
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_BP,D0
 		bra	deice_enter
@@ -793,75 +628,6 @@ mos_WRCH_default_entry
 		movem.l	D0-D3/A0-A1,-(SP)
 		bsr	mos_VDU_WRCH
 		movem.l (SP)+,D0-D3/A0-A1
-		rts
-
-SWI_OS_WriteC	bsr	callWRCHV
-		CLV
-		rts
-
-SWI_OS_WriteS	movem.l	D0/A0,-(SP)
-	;STACK:
-	;+-----+---+----------------------------------------+
-	;| +12 | l | Original PC (points at SWI number WORD |
-	;+-----+---+----------------------------------------+
-	;| +10 | w | Original SR                            |
-	;+-----+---+----------------------------------------+
-	;| +0C | l | reserved for SWI number                |
-	;+-----+---+----------------------------------------+
-	;| +08 | l | reserved for return to SWI exit        |
-	;+-----+---+----------------------------------------+
-	;| +04 | l | A0 save                                |
-	;+-----+---+----------------------------------------+
-	;| +00 | l | D0 save                                |
-	;+-----+---+----------------------------------------+
-
-		; set A0 to point at original PC
-		move.l	$12(SP),A0
-.lp		move.b  (A0)+,D0
-		beq	.s1
-		bsr	callWRCHV
-		bra	.lp
-.s1		; update SWI return address
-		move.l	A0,D0
-		addq.l	#1,D0
-		bclr	#0,D0
-		move.l	D0,$12(SP)		; this clears V
-		movem.l	(SP)+,D0/A0
-		rts
-
-SWI_OS_Write0	movem.l	D0/A0,-(SP)
-		move.l	D0,A0
-.lp		move.b  (A0)+,D0
-		beq	.s1
-		bsr	callWRCHV
-		bra	.lp
-.s1		movem.l	(SP)+,D0/A0
-		rts
-
-SWI_OS_NewLine	move.l	D0,-(SP)
-		moveq	#13,D0
-		bsr	callWRCHV
-		moveq	#10,D0
-		bsr	callWRCHV
-		move.l	(SP)+,D0
-		rts
-
-SWI_OS_WriteI	move.w	D0,-(SP)
-	;STACK:
-	;+-----+---+----------------------------------------+
-	;| +0C | l | Original PC (points at SWI number WORD |
-	;+-----+---+----------------------------------------+
-	;| +0A | w | Original SR                            |
-	;+-----+---+----------------------------------------+
-	;| +06 | l | reserved for SWI number                |
-	;+-----+---+----------------------------------------+
-	;| +02 | l | reserved for return to SWI exit        |
-	;+-----+---+----------------------------------------+
-	;| +00 | w | D0 save                                |
-	;+-----+---+----------------------------------------+
-		move.b  $9(SP),D0			; get swi number low byte
-		bsr	callWRCHV
-		move.w	(SP)+,D0
 		rts
 
 

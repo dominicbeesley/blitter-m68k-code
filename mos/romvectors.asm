@@ -35,10 +35,10 @@ romv_trap_6	dc.l	handle_trap_6
 romv_trap_7	dc.l	handle_trap_7
 romv_trap_8	dc.l	handle_trap_8
 romv_trap_9	dc.l	handle_trap_9
-romv_trap_A	dc.l	handle_trap_A
-romv_trap_B	dc.l	handle_trap_B
-romv_trap_C	dc.l	handle_trap_C
-romv_trap_D	dc.l	handle_trap_D
-romv_trap_E	dc.l	handle_trap_E
-romv_trap_F	dc.l	handle_trap_F
+romv_trap_A	dc.l	handle_trap_10
+romv_trap_B	dc.l	handle_trap_11
+romv_trap_C	dc.l	kernel_swi_handle
+romv_trap_D	dc.l	handle_trap_13
+romv_trap_E	dc.l	handle_trap_14
+romv_trap_F	dc.l	handle_trap_15
 		blk.l	16,0

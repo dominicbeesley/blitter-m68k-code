@@ -1,13 +1,8 @@
 ;	OS Entry points
 
 		macro SWI
-	if ((\1) & $00FDFFFF) > $8000
-		trap #2
-		dc.l (\1)
-	else
-		trap #1
-		dc.w (((\1) & $00020000) >> 2) | ((\1) & $7FFF)
-	endif
+		move.l #\1,A0
+		trap #12
 		endm
 
 

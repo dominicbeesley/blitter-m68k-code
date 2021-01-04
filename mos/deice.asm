@@ -95,15 +95,12 @@ deice_enter
 INT_ENTRY
 
 * For nmi check to see if we're already running and exit if so
-		cmp.b	#DEICE_STATE_IRQ_x+7,D0
-		bne	.S1
-		tst.b	deice_run_flag
+		bset.b	#0, deice_run_flag
 		beq	.S1
 		; already running POH
 		movem.l	(A7)+,D0-D7/A0-A6
 		rte
-.S1		st.b	deice_run_flag
-		lea.l	deice_reg_top-deice_reg_D0(A7),A0	; calc original stack pointer
+.S1		lea.l	deice_reg_top-deice_reg_D0(A7),A0	; calc original stack pointer
 		move.l	A0,-(A7)				; and save as supervisor stack
 		move.l	USP,A0					; user stack
 		move.l	A0,-(A7)				; and save		

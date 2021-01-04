@@ -5,14 +5,19 @@ ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 TARGETS=mos68k.bin mos68k.noi
 DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
 
-OBJS=font.o vdu.o kernel.o romheader.o romvectors.o deice.o defaultosvectors.o interrupts.o keyboard.o defaultsysvars.o
+OBJS=font.o vdu.o kernel.o kernel_swi.o romheader.o romvectors.o deice.o defaultosvectors.o interrupts.o keyboard.o defaultsysvars.o
 OBJS2=$(addprefix obj/, $(OBJS))
+
+HOSTFSDIR=~/hostfs/test68008
 
 all:: $(TARGETS)
 
-mos68k.bin mos68k.noi: $(OBJS2)
-	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $(OBJS2) > mos68k.sym
-	cp $@ /cygdrive/d/cygwin64/home/dominic/hostfs/test68008
+hostfs:: all
+	cp $(TARGETS) $(HOSTFSDIR)
+
+
+mos68k.bin: $(OBJS2)
+	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $^ > mos68k.sym
 	../scripts/getsymbols.pl <$(basename $@).sym >$(basename $@).noi
 	if [[ -e debugsyms.noi ]]; then \
 		cat $(basename $@).noi debugsyms.noi >tmp.noi; \
