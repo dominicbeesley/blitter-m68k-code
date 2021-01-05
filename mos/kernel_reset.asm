@@ -106,7 +106,6 @@ mos_handle_res_skip_clear_mem2
 							;Keyboard Autoscan on
 							;Sound disabled (may still sound)
 
-		TRACE
 
 		clr.b	sysvar_BREAK_LAST_TYPE		;Clear last BREAK flag
 		moveq	#9,D0				;B=9
@@ -121,7 +120,6 @@ LDA11		move.b	D0,D1				;
 							;link 2 = bit 0 of &FC and so on
 							;If CTRL pressed bit 7 of &FC=1 X=0
 		lsr.w	#7,D2				;CTRL is now in bit 8 7..0 is keyboard links	
-		move.b	D2,zp_mos_INT_A			;Save keyboard links for later
 		bsr	x_Turn_on_Keyboard_indicators_API	;Set LEDs
 							;Carry set on entry is in bit 0 of A on exit
 							;Get carry back into carry flag
@@ -131,17 +129,19 @@ x_set_up_page_2
 		lea	oswksp_OSWORD3_CTDOWN,A0
 		lea	sysvar_BREAK_LAST_TYPE,A1
 ;;	puls	A					;get back A from &D9DB
+
 		tst.b	D4				;if A=0 power up reset so DA36 with X=&9C Y=&8D
 		beq	.s1
 
 		lea	sysvar_FX238,A1				;else Y=&7E
-		bcc	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
+		btst	#8, D2					; 68: get CTRL from D2 above
+		beq	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
 		lea	sysvar_BREAK_VECTOR_JMP,A1		;else Y=&87 COLD RESET
 		addq.b	#1,sysvar_BREAK_LAST_TYPE		;&28D=1
 .s1		addq.b	#1,sysvar_BREAK_LAST_TYPE		;&28D=&28D+1
 								;get keyboard links set
-		not.b	D4					;invert
-		move.b	D4,sysvar_STARTUP_OPT			;and store at &28F
+		not.b	D2					;invert
+		move.b	D2,sysvar_STARTUP_OPT			;and store at &28F
 		lea	oswksp_VDU_VERTADJ,A0			;X=&90
 
 		DEBUG_INFO	"Setup page 2"
@@ -276,8 +276,7 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 
 ;		SWI	XOS_IntOn				; enable interrupts
 
-		TRACE
-
+		
 		move.b	sysvar_STARTUP_OPT,D0			; init vdu
 		bsr	mos_VDU_init
 
