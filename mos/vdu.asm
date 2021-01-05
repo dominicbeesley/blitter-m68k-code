@@ -878,11 +878,11 @@ LC9C1		move.b	D0,(A0,D1)
 		clr.w	D1
 		move.b	vduvar_MODE,D1						;	C9C7
 						;
-		move.b	mostbl_vdu_window_right(PC,D1),vduvar_TXT_WINDOW_RIGHT	; text window right hand margin maximum
+		move.b	mostbl_vdu_window_right(PC,D1.w),vduvar_TXT_WINDOW_RIGHT	; text window right hand margin maximum
 										; text window right
 		bsr	LCA88_newAPI						; calculate number of bytes in a line
 		move.b	vduvar_MODE,D1
-		move.b	mostbl_vdu_window_bottom(PC,D1),vduvar_TXT_WINDOW_BOTTOM; text window bottom margin maximum
+		move.b	mostbl_vdu_window_bottom(PC,D1.w),vduvar_TXT_WINDOW_BOTTOM; text window bottom margin maximum
 										; bottom margin
 		move.b	#$03,vduvar_VDU_Q_END - 1				; set as last parameter
 		move.b	#$02,vduvar_VDU_Q_END - 3				; increment Y
@@ -910,7 +910,7 @@ x_set_6845_screenstart_from_X			; LCA0E
 		bra	mos_set_6845_regD1toD0_16
 LCA27		
 		sub.w	#$7400,D0			;	CA27
-		eor.w	#$20,D0				;	CA29
+		eor.w	#$2000,D0			;	CA29
 mos_set_6845_regD1toD0_16
 		ror.w	#8,D0
 		move.b	D1,sheila_CRTC_reg
@@ -1107,7 +1107,7 @@ mos_VDU_set_mode:
 		asl.b	#1,D1
 		lea.l	tbl68_size_bytes_pre_row,A1
 		move.w	(A1,D1.w),vduvar_BYTES_PER_ROW
-		andi	#$43,zp_vdu_status
+		andi.b	#$43,zp_vdu_status
 		move.b	vduvar_MODE,D0
 		move.b	mostbl_VDU_VIDPROC_CTL_by_mode-mostbl_VDU_mode_colours_m1(A0,D0.w),D0
 		bsr	mos_VIDPROC_set_CTL		
@@ -1116,8 +1116,7 @@ mos_VDU_set_mode:
 		ori	#$0700,SR			; disable interrupts
 		clr.w	D2
 		move.b	vduvar_MODE_SIZE,D2
-		moveq	#12,D1
-		mulu.w	D1,D2
+		mulu.w	#12,D2
 		lea	12+mostbl_VDU_6845_mode_012-mostbl_VDU_mode_colours_m1(A0,D2.w),A0
 		moveq	#11,D1
 mos_send6845lp					; LCBB0
@@ -1467,7 +1466,7 @@ LCEF7		move.b	vduvar_TXT_CUR_Y,D1
  ;subtracted to wraparound the screen. X/A, D8/9 are then set from this
 
 tbl68_size_bytes_pre_row
-		dc.w	640,320,320,40
+		dc.w	640,640,320,320,40
 
 x_set_up_displayaddress
 		clr.w	D0
@@ -3034,7 +3033,7 @@ x_cursor_COPY					; LD905
 		bne	LD8CBclrArts				;exit vdu5
 
 		
-		moveq	#135,D0
+		move.b	#135,D0
 		SWI	XOS_Byte				;read a character from the screen - note changed this to use
 		tst.b	D1
 		move.b	D1,-(SP)			;else store char

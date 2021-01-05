@@ -28,7 +28,6 @@
  **************************************************************************
 
 kernel_handle_res:	
-		TRACE
 		; copy rom vectors to low memory
 		lea	(romv_start,PC),A6
 		movea	#0, A0
@@ -106,6 +105,9 @@ mos_handle_res_skip_clear_mem2
 							;Caps Lock On, SHIFT Lock undetermined
 							;Keyboard Autoscan on
 							;Sound disabled (may still sound)
+
+		TRACE
+
 		clr.b	sysvar_BREAK_LAST_TYPE		;Clear last BREAK flag
 		moveq	#9,D0				;B=9
 LDA11		move.b	D0,D1				;
@@ -272,9 +274,11 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 
 
 
-;		SWI	XOS_IntOn			; enable interrupts
+;		SWI	XOS_IntOn				; enable interrupts
 
-		moveq	#1,D0				; init mode 0
+		TRACE
+
+		move.b	sysvar_STARTUP_OPT,D0			; init vdu
 		bsr	mos_VDU_init
 
 
