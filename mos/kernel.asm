@@ -62,6 +62,20 @@
 
 
 kernel_go_todo
+		TRACE
+
+		move.l	#$C0000700, D0
+		move.l	#$100, D1
+		moveq.l #' ', D2
+		moveq.l #$7F, D3
+		moveq.l #'#', D4
+		SWI	XOS_ReadLine
+
+		lea.l	$700, A0
+		clr.b	(A0,D1)
+		SWI	XOS_WriteS
+
+
 
 		XWRITES	"HELLO ISHBEL"
 
@@ -72,7 +86,7 @@ kernel_go_todo
 		dbf	D0,.lll3
 
 
-		move.w	#100,D1
+		move.w	#99,D1
 		
 		lea.l	test_d,A1
 .lll4		move.l	A1,D0
@@ -313,21 +327,22 @@ intmsg_bus:
 		bsr	deice_print
 
 		DEBUG_INFO_S "CYC:"
-		move.w	0(A7),D0
+		move.w	60(A7),D0
 		bsr	d_PrHex_w	
 		moveq	#13, D0
 		bsr	deice_print
 		DEBUG_INFO_S "ADD:"
-		move.l	2(A7),D0
+		move.l	62(A7),D0
 		bsr	d_PrHex_l	
 		moveq	#13, D0
 		bsr	deice_print
 		DEBUG_INFO_S "INS:"
-		move.w	6(A7),D0
+		move.w	66(A7),D0
 		bsr	d_PrHex_w	
 		moveq	#13, D0
 		bsr	deice_print
-		moveq.l	#8,D3
+
+		moveq.l	#8,D4
 		bra	bussk2
 
 intmsg
@@ -336,8 +351,9 @@ intmsg
 		moveq	#13,D0
 		bsr	deice_print
 
-		clr.l	D3
+		clr.l	D4
 bussk2:
+		clr.l	D3
 		clr.b	D2
 
 intmsg_lp0:	
@@ -351,7 +367,7 @@ intmsg_lp0:
 		moveq	#' ',D0
 		bsr	deice_print
 
-		move.l	0(A7,D3.w),D0
+		move.l	0(A7),D0
 		bsr	d_PrHex_l
 
 		moveq	#' ',D0
@@ -387,8 +403,8 @@ intmsg_lp0:
 		bsr	deice_print
 
 		move	A7,D0
-		add.l	D3,D0
-		add.l	#66-28,D0
+		add.l	D4,D0
+		add.l	#64,D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -419,7 +435,7 @@ intmsg_lp0:
 		moveq	#' ',D0
 		bsr	deice_print
 
-		move.l	34(A7,D3.w),D0
+		move.l	62(A7,D4.w),D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -433,16 +449,16 @@ intmsg_lp0:
 		bsr	deice_print
 		bsr	deice_print
 
-		move.w	32(A7,D3.w),D0
+		move.w	60(A7,D4.w),D0
 		bsr	d_PrHex_w
 
 		moveq	#13,D0
 		bsr	deice_print
 
-		stop	#$2700
+.there		stop	#$2700
+		bra	.there
 
 
-		movea.l	#STACK,A7			; reset stack
 
 mos_WRCH_default_entry
 		; TODO all the printer/redirect/spool stuff for now just sends to VDU
