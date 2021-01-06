@@ -176,8 +176,6 @@ LDA56		clr.b	(A0)+				;zero zeropage &E2 to &FF
 
 		; note 200-236 unused and uncleared
 		
-		TRACE
-
 		lea	mostbl_SYSVAR_DEFAULT_SETTINGS(PC),A0
 		lea	sysvar_OSVARADDR,A2		
 
@@ -282,8 +280,6 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		
 		move.b	sysvar_STARTUP_OPT,D0			; init vdu
 		bsr	mos_VDU_init
-
-		TRACE
 
 		;TODO: this is a bit simplistic
 		;enter user mode set up a stack and then enable interrupts and change mode

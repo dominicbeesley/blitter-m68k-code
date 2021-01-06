@@ -38,6 +38,7 @@ deice_stack		:= COMBUF+COMBUF_SIZE+DEICE_STACK_SIZE
 
 DEICE_STATE_BP		:=	1			; breakpoint
 DEICE_STATE_TRACE	:= 	2			; trace
+DEICE_STATE_ILLEGAL	:=      3
 DEICE_STATE_IRQ_x	:=	$10			; add the irq number to this
 
 

@@ -71,7 +71,23 @@
 
 
 kernel_go_todo
-		TRACE
+
+		lea.l	0, A0
+		lea.l	0, A1
+		move.l	#$FFFF0100,(A0)
+
+		moveq	#4,D1
+		clr.b	D2
+		SEX
+		bra	.tsk	
+
+
+.tlp		move.b  D0,(A1)+
+.tsk		move.b	(A0)+,D0
+		addx.b	D2,D0
+		dbcc	D1,.tlp
+		move.b  D0,(A1)
+
 
 		move.l	#$C0000700, D0
 		move.l	#$100, D1
@@ -109,10 +125,13 @@ kernel_go_todo
 .lll5		move.l	D4,D0
 		bsr	PrHex_l
 
+		SWI	OS_WriteI+' '
+
+		; time is little-endian, rearrange
 		moveq	#3,D1
 		lea.l	oswksp_TIME,A0
-.llt		move.b	(A0,D1.W),D0
-		lsl.l	#8,D0
+.llt		rol.l	#8,D0
+		move.b	(A0,D1.W),D0		
 		dbra	D1,.llt
 		bsr	PrHex_l
 
@@ -121,13 +140,15 @@ kernel_go_todo
 
 		SWI	OS_WriteI+17
 		move.b	D4,D0
-		andi.b	#$7,D0
+		andi.b	#$F,D0
 		SWI	OS_WriteC
 
 		SWI	OS_WriteI+17
 		move.b	D4,D0
-		andi.b	#$7,D0
+		lsr.b	#4,D0
 		not.b	D0
+		andi.b	#$F,D0
+		ori.b	#$80,D0
 		SWI	OS_WriteC
 
 		addq.l	#1,D4
@@ -201,9 +222,10 @@ handle_addr_err:
 		lea	(str_addr_err,PC),A0
 		bra	intmsg_bus
 handle_illegal:
+		move    #$2700,SR
 		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_illegal,PC),A0
-		bra	intmsg
+		moveq	#DEICE_STATE_ILLEGAL,D0
+		bra	deice_enter
 handle_div0:
 		movem.l	D0-D7/A0-A6,-(A7)
 		lea	(str_div0,PC),A0
@@ -221,6 +243,7 @@ handle_priv:
 		lea	(str_priv,PC),A0
 		bra	intmsg
 handle_trace:
+		move    #$2700,SR
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_TRACE,D0
 		bra	deice_enter
@@ -240,9 +263,10 @@ handle_int_spur:
 
 handle_int_NMI:
 		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_int_2,PC),A0
+		lea	(str_int_nmi,PC),A0
 		bra	intmsg
 handle_int_DEBUG:
+		move    #$2700,SR
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_IRQ_x+7,D0
 		bra	deice_enter
@@ -332,6 +356,7 @@ handle_trap_14:
 		ori.w	#$8000, (A7)
 		rte
 handle_trap_15:
+		move    #$2700,SR
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_BP,D0
 		bra	deice_enter
@@ -500,7 +525,6 @@ brkBadCommand	trap	#0
 test_d:		dc.b	"Blitter Board 68008", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
 str_addr_err:	dc.b	"address error",0
 str_bus_err:	dc.b	"bus error",0
-str_illegal:	dc.b	"illegal op",0
 str_div0:	dc.b	"div0",0
 str_chk:	dc.b	"chk",0
 str_trapv:	dc.b	"trapv",0
@@ -509,12 +533,7 @@ str_trace:	dc.b	"trace",0
 str_opA:	dc.b	"opA",0
 str_opF:	dc.b	"opF",0
 str_int_spur:	dc.b	"int_spur",0
-str_int_2:	dc.b	"int_2",0
-str_int_3:	dc.b	"int_3",0
-str_int_4:	dc.b	"int_4",0
-str_int_5:	dc.b	"int_5",0
-str_int_6:	dc.b	"int_6",0
-str_int_7:	dc.b	"int_7",0
+str_int_nmi:	dc.b	"int_nmi",0
 str_trap_0:	dc.b	"trap_0",0
 str_trap_1:	dc.b	"trap_1",0
 str_trap_2:	dc.b	"trap_2",0

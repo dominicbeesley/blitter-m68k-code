@@ -207,21 +207,26 @@ mos_SYSTEM_INTERRUPT_6_10mS_Clock
  ;as the current timer is only read.  Other methods would cause inaccuracies
  ;if a timer was read whilst being updated.
 
- 		lea	oswksp_TIME,A1 		
+ 		lea	oswksp_TIME-5,A1 		
  		moveq	#0,D0
 		move.b	sysvar_TIMER_SWITCH,D0		;get current system clock store pointer (5,or 10)
 		lea	(A1,D0.w), A0
 		eor.b	#$0F, D0			;and invert lo nybble (5 becomes 10 and vv)
 		move.b	D0,sysvar_TIMER_SWITCH		;and store back in clock pointer (i.e. inverse previous
 							;contents)
-		
 		lea	(A1,D0.w), A1				
+
+		; we have to do the full add here (as we are copying) and we
+		; have to do it byte-wise as it is a) unaligned, b) in little-endian
+
 		moveq	#4,D1
 		clr.b	D2
 		SEX
-.tlp		move.b	-(A0),D0
-		addx.b	D2, D0
-		move.b  D0,-(A1)
+
+
+.tlp		move.b	(A0)+,D0
+		addx.b	D2,D0
+		move.b  D0,(A1)+
 		dbra	D1,.tlp
 
 		addq.l	#1,oswksp_OSWORD3_CTDOWN
