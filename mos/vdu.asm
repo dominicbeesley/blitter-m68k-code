@@ -24,6 +24,32 @@ mostbl_chardefs := font
 		align	2
 		endm
 
+;;		; get a 16 bit address in SYS space have to do this 
+;;		; as move.w *,A0 sign extends
+;;		; TODO: shorten this
+;;GetAddrSYS16	move.l	D0,-(SP)
+;;		moveq	#-1,D0
+;;		move.w	(A0),D0
+;;		move.l	D0,A0
+;;		move.l	(SP)+,D0
+;;		rts
+
+		; TODO - make the ZP registers 32 bit where they need to be!
+		; the specified address register has its top word set to FFFF
+		macro   ADDRSYS16
+		exg	D0,\1
+		ori.l	#$FFFF0000,D0
+		exg	D0,\1
+		endm
+
+		; move zp variable in \1 to address \3 via data \2
+		macro   LDADDRSYS16
+		moveq	#-1,\2
+		move.w	\1,\2
+		move.l  \2,\3
+		endm
+
+
 
 mostbl_byte_mask_4col
 		dc.b	$00,$11,$22,$33,$44,$55,$66,$77 ;	C31F
@@ -666,13 +692,14 @@ mos_VDU_19
 		move.w	SR, -(SP)			; save flags
 		or.w	#$0700,SR			; and disable interrupts
 
+		moveq	#0,D1
 		move.b	vduvar_VDU_Q_END - 5,D1		; b <= logical colour
 		and.b	vduvar_COL_COUNT_MINUS1,D1	; 
 		
 		move.b	vduvar_VDU_Q_END - 4, D0	; a <= physical colour
 LC89E		andi.b	#$0F,D0				; 
 		lea	vduvar_PALLETTE, A0
-		move.b  D0,0(A0,D1)			; store in saved palette 
+		move.b  D0,0(A0,D1.w)			; store in saved palette 
 
 		move.b	vduvar_COL_COUNT_MINUS1,D2	; a <= colours - 1
 							;	2 col		4 col		16 col
@@ -871,7 +898,7 @@ mostbl_vdu_window_right
 ;; VDU 26  set default windows		  0 parameters
 mos_VDU_26							; LC9BD
 		clr.w	D0
-		moveq	#$2C,D1
+		moveq	#$2C,D1							; This seems too high?!
 		lea.l	vduvar_GRA_WINDOW_LEFT,A0
 LC9C1		move.b	D0,(A0,D1)
 		dbf	D1,LC9C1						;	C9C4
@@ -1211,15 +1238,6 @@ LCD66		addq.b	#1,vduvar_TEXT_IN_CUR_Y		;	CD66
 
 GetTopScanLineAddr
 		lea.l	zp_vdu_top_scanline,A0
-		; get a 16 bit address in SYS space have to do this 
-		; as move.w *,A0 sign extends
-		; TODO: shorten this
-GetAddrSYS16	move.l	D0,-(SP)
-		moveq	#-1,D0
-		move.w	(A0),D0
-		move.l	D0,A0
-		move.l	(SP)+,D0
-		rts
 
 ;; ----------------------------------------------------------------------------
 ;; set up write cursor
@@ -1327,13 +1345,13 @@ LCE2A:		move.w	zp_vdu_wksp,zp_vdu_top_scanline				;
 ;; copy routines
 x_copy_text_line_window_LCE38
 		move.w	D1,-(SP)						; TODO: eliminate?
+
+		LDADDRSYS16 zp_vdu_wksp, D1, A1
+		LDADDRSYS16 zp_vdu_top_scanline, D1, A0
+
 		move.w	vduvar_TXT_WINDOW_WIDTH_BYTES,D1
 		subq.w	#1,D1
-		lea	zp_vdu_wksp,A0
-		bsr	GetAddrSYS16
-		move.l	A0,A1
-		lea	zp_vdu_top_scanline,A0
-		bsr	GetAddrSYS16
+
 .s1		move.b	(A1)+,(A0)+
 		dbf	D1,.s1
 		move.w	(SP)+,D1
@@ -1357,11 +1375,8 @@ x_copy_text_line_window_LCE73
 ;x_copy_text_line_window_LCE73							; LCE73
 		move.b	zp_vdu_wksp+1,-(SP)		; save low byte of source pointer
 
-		lea.l	zp_vdu_wksp,A0			; set up pointers from 16 bit vars
-		bsr	GetAddrSYS16
-		move.l	A0,A1
-		lea.l	zp_vdu_top_scanline,A0
-		bsr	GetAddrSYS16
+		LDADDRSYS16 zp_vdu_wksp, D1, A1		; set up pointers from 16 bit vars
+		LDADDRSYS16 zp_vdu_top_scanline, D1, A0
 
 		clr.w	D1
 		move.b	vduvar_TXT_WINDOW_RIGHT,D1	; TODO: check we can corrupt D1 here!
@@ -1399,8 +1414,9 @@ x_clear_a_line
 		bsr	x_set_up_displayaddress
 		move.b	vduvar_TXT_WINDOW_RIGHT,D2
 		sub.b	vduvar_TXT_WINDOW_LEFT,D2
-		lea.l	zp_vdu_top_scanline,A0
-		bsr	GetAddrSYS16		
+
+		LDADDRSYS16 zp_vdu_top_scanline, D3, A0
+
 		move.b	vduvar_TXT_BACK,D3
 		asl.w	#8,D3
 		move.b	vduvar_TXT_BACK,D3
@@ -1530,12 +1546,12 @@ LCFBF_renderchar2
 		bne	x_vdu5_render_char
 render_logo2
 
+		LDADDRSYS16 zp_vdu_top_scanline,D0, A0
+
 		moveq	#7,D3
 		move.b	zp_vdu_txtcolourOR,D0
 		move.b	zp_vdu_txtcolourEOR,D1
 
-		lea.l	zp_vdu_top_scanline,A0
-		bsr	GetAddrSYS16
 		cmp.b	#3,vduvar_COL_COUNT_MINUS1		;	CFBF
 		beq	render_char_4colour		;	CFCC
 		bhi	render_char_16colour		;	CFCE
@@ -1581,9 +1597,8 @@ x_convert_teletext_characters
 		lea.l	mostbl_TTX_CHAR_CONV,A0
 LCFDE		cmp.b	(A0,D1),D0
 		beq	LCFE9				;	CFE1
-		dbf	D1,LCFDE			;	CFE4
-LCFE6		lea.l	zp_vdu_top_scanline,A0
-		bsr	GetAddrSYS16
+		dbf	D1,LCFDE			;	CFE4		
+LCFE6		LDADDRSYS16 zp_vdu_top_scanline,D1,A0
 		move.b	D0,(A0)
 		rts					;	CFE8
 LCFE9		move.b	1(A0,D1),D0
@@ -1789,8 +1804,7 @@ x_mos_vdu_gra_drawpixels_in_grpixmask					; LD0F0
 		move.b	vduvar_GRA_CUR_CELL_LINE,D1			;	D0F0
 		;; new API check LD0F3 
 x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B 			; LD0F3 
-		lea.l	zp_vdu_gra_char_cell,A0
-		bsr	GetAddrSYS16
+		LDADDRSYS16 zp_vdu_gra_char_cell,D0,A0
 		move.b	zp_vdu_grpixmask,D0				;	D0F3
 		and.b	zp_vdu_gracolourOR,D0				;	D0F5
 		or.b	(A0,D1),D0					;	D0F7
@@ -1804,8 +1818,7 @@ LD103rts
 
 x_mos_vdu_gra_drawpixel_whole_byte
 		movem.w	D0/D2,-(SP)					; check if needed
-		lea.l	zp_vdu_gra_char_cell,A0
-		bsr	GetAddrSYS16
+		LDADDRSYS16 zp_vdu_gra_char_cell,D0,A0
 		move.b	(A0,D1),D0					; LD104
 		or.b	zp_vdu_gracolourOR,D0
 		move.b	zp_vdu_gracolourEOR,D2
