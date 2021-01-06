@@ -16,7 +16,7 @@
 
 
 		macro TRACE
-		ori.w	#$8000,SR
+		trap	#14
 		endm
 
 		macro   CLC

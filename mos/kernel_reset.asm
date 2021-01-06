@@ -31,7 +31,7 @@ kernel_handle_res:
 		; copy rom vectors to low memory
 		lea	(romv_start,PC),A6
 		movea	#0, A0
-		moveq	#$63, D0
+		move.w	#(romv_size_words)-1, D0
 .lp:		move.l	(A6)+,(A0)+
 		dbf	D0,.lp
 
@@ -62,9 +62,9 @@ mos_handle_res_skip_clear_mem1
 
 		;TODO: check this - clear bottom 32k
 		lea.l	$400, A0
-		move.w	#$8000-$400,D0
-.1		clr.b	(A0)+
-		dbf	D0,1
+		move.w	#$8000-$400-1,D0
+.lp1		clr.b	(A0)+
+		dbf	D0,.lp1
 
 ;;TODO: use this as top of 24 bit address RAM? set to 1F?
 ;;6809;;		sta	sysvar_RAM_AVAIL
@@ -125,6 +125,7 @@ LDA11		move.b	D0,D1				;
 							;Get carry back into carry flag
 
 
+
 x_set_up_page_2
 		lea	oswksp_OSWORD3_CTDOWN,A0
 		lea	sysvar_BREAK_LAST_TYPE,A1
@@ -175,6 +176,8 @@ LDA56		clr.b	(A0)+				;zero zeropage &E2 to &FF
 
 		; note 200-236 unused and uncleared
 		
+		TRACE
+
 		lea	mostbl_SYSVAR_DEFAULT_SETTINGS(PC),A0
 		lea	sysvar_OSVARADDR,A2		
 
@@ -279,6 +282,14 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		
 		move.b	sysvar_STARTUP_OPT,D0			; init vdu
 		bsr	mos_VDU_init
+
+		TRACE
+
+		;TODO: this is a bit simplistic
+		;enter user mode set up a stack and then enable interrupts and change mode
+		move.l	#$00008000, A0
+		move.l	A0,USP
+		andi.w	#$00FF, SR
 
 
 		bra	kernel_go_todo

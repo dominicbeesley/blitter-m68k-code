@@ -1,6 +1,8 @@
 		include "kernel_defs.inc"
 
 		xdef	romv_start
+		xdef	romv_size
+		xdef	romv_size_words
 
 		SECTION "romvectors"
 romv_start:	
@@ -42,3 +44,6 @@ romv_trap_D	dc.l	handle_trap_13
 romv_trap_E	dc.l	handle_trap_14
 romv_trap_F	dc.l	handle_trap_15
 		blk.l	16,0
+romv_end:
+romv_size	:= 256
+romv_size_words := romv_size/4

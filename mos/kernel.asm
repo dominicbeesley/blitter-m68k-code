@@ -58,6 +58,15 @@
 		xdef		kernel_go_todo
 		xdef		intmsg
 
+		xdef		PrHex_l
+		xdef		PrHex_w
+		xdef		PrHex_b
+
+		xdef		d_PrHex_l
+		xdef		d_PrHex_w
+		xdef		d_PrHex_b
+
+
 		SECTION "code"
 
 
@@ -73,7 +82,8 @@ kernel_go_todo
 
 		lea.l	$700, A0
 		clr.b	(A0,D1)
-		SWI	XOS_WriteS
+		move.l	A0,D0
+		SWI	XOS_Write0
 
 
 
@@ -98,6 +108,14 @@ kernel_go_todo
 		moveq	#0,D4
 .lll5		move.l	D4,D0
 		bsr	PrHex_l
+
+		moveq	#3,D1
+		lea.l	oswksp_TIME,A0
+.llt		move.b	(A0,D1.W),D0
+		lsl.l	#8,D0
+		dbra	D1,.llt
+		bsr	PrHex_l
+
 
 		SWI	OS_NewLine
 
@@ -310,9 +328,9 @@ handle_trap_13:
 		lea	(str_trap_D,PC),A0
 		bra	intmsg
 handle_trap_14:
-		movem.l	D0-D7/A0-A6,-(A7)
-		lea	(str_trap_E,PC),A0
-		bra	intmsg
+		; start TRACE
+		ori.w	#$8000, (A7)
+		rte
 handle_trap_15:
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_BP,D0

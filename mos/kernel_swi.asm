@@ -326,8 +326,16 @@ SWI_OS_WriteI
 SWI_OS_ReadLine
 		move.l 	D4,-(SP)
 		; move fag bits to top of D4
-		move.l	D0,D4
-		move.w  2(SP),D4
+		andi.l	#$00FFFFFF, D4
+		eor.l	D0,D4
+
+		andi.l	#$3FFFFFFF,D0
+		eor.l	D0,D4
+
+		moveq.l	#0,D1
+		move.l	(SP)+,D4
+		rts		
+
 
 ;; 6809 ;;mos_OSWORD_0_read_line						; LE902
 ;; 6809 ;;		ldb	#$04

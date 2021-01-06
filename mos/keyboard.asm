@@ -9,6 +9,7 @@
 
 		xdef 	keyb_check_key_code_API
 		xdef	x_Turn_on_Keyboard_indicators_API
+		xdef 	mos_enter_keyboard_routines
 
 		SECTION "code"
 
@@ -55,4 +56,7 @@ keyb_check_key_code_API
 
 keyb_hw_enable_scan
 		move.b	#$0B,sheila_SYSVIA_orb
+		rts
+
+mos_enter_keyboard_routines
 		rts
