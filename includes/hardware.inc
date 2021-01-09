@@ -1,6 +1,33 @@
 ; beeb68008 hardware locations and constants
 
 
+; flags register bit masks
+CC_C_M			:=	$0001
+CC_V_M			:=	$0002
+CC_Z_M			:=	$0004
+CC_N_M			:=	$0008
+CC_X_M			:=	$0010
+SR_I0_M			:=	$0100
+SR_I1_M			:=	$0200
+SR_I2_M			:=	$0400
+SR_S_M			:=	$2000
+SR_T_M			:=	$8000
+
+
+; flags register bit indices
+CC_C_B			:=	0
+CC_V_B			:=	1
+CC_Z_B			:=	2
+CC_N_B			:=	3
+CC_X_B			:=	4
+SR_I0_B			:=	8
+SR_I1_B			:=	9
+SR_I2_B			:=	10
+SR_S_B			:=	13
+SR_T_B			:=	15
+
+
+
 JIM			:=	$FFFFFD00
 
 * mos ROM memory map location

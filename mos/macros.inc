@@ -17,6 +17,7 @@
 
 		macro TRACE
 		trap	#14
+		nop
 		endm
 
 		macro   CLC

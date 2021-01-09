@@ -28,14 +28,15 @@
  **************************************************************************
 
 kernel_handle_res:	
-		; copy rom vectors to low memory
+		; M68: copy rom vectors to low memory
 		lea	(romv_start,PC),A6
 		movea	#0, A0
 		move.w	#(romv_size_words)-1, D0
-.lp:		move.l	(A6)+,(A0)+
+.lp:		move.l	(A6)+,(A0)+			; note during "boot" writes to RAM pass through but
+                              				;  reads from the bottom page of RAM map to the boot rom 
 		dbf	D0,.lp
 
-		; switch maps by temporarily selecting blitter device
+		; switch boot rom map off by temporarily selecting blitter device
 		move.b	#JIM_DEVNO_BLITTER,(fred_JIM_DEVNO)
 		clr.b	(fred_JIM_DEVNO)
 
@@ -120,7 +121,7 @@ LDA11		move.b	D0,D1				;
 							;link 2 = bit 0 of &FC and so on
 							;If CTRL pressed bit 7 of &FC=1 X=0
 		lsr.w	#7,D2				;CTRL is now in bit 8 7..0 is keyboard links	
-		bsr	x_Turn_on_Keyboard_indicators_API	;Set LEDs
+		bsr	x_Turn_on_Keyboard_indicators_API68	;Set LEDs
 							;Carry set on entry is in bit 0 of A on exit
 							;Get carry back into carry flag
 
@@ -273,13 +274,15 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		move.b	D0,sheila_SYSVIA_t1lh			;or 10msec, interrupts occur every 10msec therefore
 		move.b	D0,sheila_SYSVIA_t1ch			;
 
-
-
-;		SWI	XOS_IntOn				; enable interrupts
-
+		DEBUG_INFO "VDU init"
 		
 		move.b	sysvar_STARTUP_OPT,D0			; init vdu
 		bsr	mos_VDU_init
+
+
+
+		DEBUG_INFO "Enter User Mode"
+
 
 		;TODO: this is a bit simplistic
 		;enter user mode set up a stack and then enable interrupts and change mode

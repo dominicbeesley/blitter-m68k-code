@@ -19,6 +19,7 @@ kernel_handle_IRQ:
 
 kernel_irq1v_handle:
 		movem.l	D0-D3/A0-A1,-(SP)
+
 ;; 6809 ;; 		; TODO ACIA
 ;; 6809 ;; 
 ;; 6809 ;; 
@@ -315,11 +316,12 @@ irq_set_sysvia_ifr_rti					; LDE6E
 ;; 6809 ;; ;; SYSTEM INTERRUPT 0 Keyboard;	
 irq_keyboard					; LDE72
 		btst	#0,D0
-		beq	LDE7F				;if bit 7 clear not a keyboard interrupt
+		beq	issue_unknown_interrupt		;if bit 7 clear not a keyboard interrupt
+		TRACE
 		bsr	mos_enter_keyboard_routines	;else scan keyboard
 		moveq	#$01,D0				;A=1
 		bra	irq_set_sysvia_ifr_rti		;and off to reset interrupt and exit
-LDE7F		bra	issue_unknown_interrupt		
+
 
 
 kernel_irq2v_handle:
