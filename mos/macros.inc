@@ -45,3 +45,13 @@
 		ori	#$0010,CCR
 		endm	CLC
 
+
+
+; TODO: these are bad?!?
+		macro	CLI
+		andi	#$F8FF,SR
+		endm
+
+		macro	SEI
+		ori	#$0700,SR
+		endm

@@ -67,6 +67,9 @@
 		xdef		d_PrHex_b
 
 
+		xdef		mos_OSBYTE_125
+		xdef		mos_OSBYTE_124
+
 		SECTION "code"
 
 
@@ -520,6 +523,45 @@ brkBadCommand	trap	#0
 		dc.b 	"Bad Command", 0
 
 
+;; ----------------------------------------------------------------------------
+;; OSBYTE  126  Acknowledge detection of ESCAPE condition
+mos_OSBYTE_126
+		clr.b	D1				;	E65C
+		tst.b	zp_mos_ESC_flag			;	E65E
+		bpl	mos_OSBYTE_124			;	E660
+		move.b	sysvar_KEYB_ESC_EFFECT,D0	;	E662
+		bne	LE671				;	E665
+		CLI					;	E667
+		move.b	D0,sysvar_SCREENLINES_SINCE_PAGE;	E668
+		bsr	mos_STAR_EXEC			;	E66B
+		bsr	mos_flush_all_buffers				;	E66E
+LE671		moveq	#-1,D1				;	E671
+;; OSBYTE  124  Clear ESCAPE condition
+mos_OSBYTE_124
+		CLX
+		bra	mos_OSBYTE_125_2		;	E673
+;; OSBYTE  125  Set ESCAPE flag
+mos_OSBYTE_125
+		SEX
+mos_OSBYTE_125_2
+		move.b	zp_mos_ESC_flag,D0
+		roxr.b	#1,D0				;	E674
+		move.b	D0,zp_mos_ESC_flag
+;TODO: TUBE
+;;	tst	sysvar_TUBE_PRESENT		;	E676
+;;	bmi	LE67C				;	E679
+		rts					;	E67B
+;; 6809 ;; ; ----------------------------------------------------------------------------
+;; 6809 ;; LE67C		TODO	"TUBE ESCAPE"
+;; 6809 ;; ;LE67C:	jmp	L0403				;	E67C
+;; 6809 ;; ;; ----------------------------------------------------------------------------
+
+
+
+mos_STAR_EXEC:
+		rts
+
+
 
 
 test_d:		dc.b	"Blitter Board 68008", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
@@ -550,6 +592,15 @@ str_trap_C:	dc.b	"trap_C",0
 str_trap_D:	dc.b	"trap_D",0
 str_trap_E:	dc.b	"trap_E",0
 str_trap_F:	dc.b	"trap_F",0
+
+
+
+
+
+
+
+
+
 
 
 

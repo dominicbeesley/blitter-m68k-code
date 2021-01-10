@@ -12,6 +12,8 @@
 		xdef	x_Turn_on_Keyboard_indicators_API68
 		xdef 	mos_enter_keyboard_routines
 		xdef	KEYV_default
+		xdef	mos_OSBYTE_118
+		xdef 	x_keyb_leds_test_esc
 
 		SECTION "code"
 
@@ -29,7 +31,7 @@ keyb_input_and_housekeeping			; LEEDA
 LEEE8		move.b	D1,sysvar_KEYB_SEMAPHORE	;reset keyboard semaphore
 
 ; : Turn on Keyboard indicators
-; no longer mucks about with flags in D0(A)! instead just preserves them
+; 68 no longer mucks about with flags in D0(A)! instead just preserves them
 x_Turn_on_Keyboard_indicators_API68			; LEEEB
 		move.w	SR,-(SP)
 		move.w	D0,-(SP)
@@ -411,88 +413,6 @@ LE4EE		SEC					;else clear carry
 LE4EF		movem.l  (SP)+,D0			;get back original value of A (68: preserve flags!)
 		rts					;and Return
 
-;; ----------------------------------------------------------------------------
-;; : INSERT byte in Keyboard buffer
-x_INSERT_byte_in_Keyboard_buffer			; LE4F1		
-		;STY_B	zp_mos_OSBW_Y
-		;clr	zp_mos_OSBW_X
-		clr.b	D1
-		rts
-
-;; 6809 ;;  *************************************************************************
-;; 6809 ;;  *                                                                       *
-;; 6809 ;;  *       OSBYTE 153 Put byte in input Buffer checking for ESCAPE         *
-;; 6809 ;;  *                                                                       *
-;; 6809 ;;  *************************************************************************
-;; 6809 ;;  ;on entry X = buffer number (either 0 or 1)
-;; 6809 ;;  ;X=1 is RS423 input
-;; 6809 ;;  ;X=0 is Keyboard
-;; 6809 ;;  ;Y is character to be written 
-;; 6809 ;; mos_OSBYTE_153
-;; 6809 ;; 		ldd	zp_mos_OSBW_Y			; A=Y, B=X (on entry to OSBYTE)
-;; 6809 ;; 							;A=buffer number
-;; 6809 ;; 		andb	sysvar_RS423_MODE		;and with RS423 mode (0 treat as keyboard 
-;; 6809 ;; 							;1 ignore Escapes no events no soft keys)
-;; 6809 ;; 		bne	mos_OSBYTE_138			;so if RS423 buffer AND RS423 in normal mode (1) E4AF
-;; 6809 ;; 							;else Y=A character to write
-;; 6809 ;; 		ldx	#0				;force keyboard buffer -- TODO: is this right?
-;; 6809 ;; 		cmpa	sysvar_KEYB_ESC_CHAR		;compare with current escape ASCII code (0=match)
-;; 6809 ;; 		bne	x_check_event_2_char_into_buf_fromA	;if ASCII or no match E4A8 to enter byte in buffer
-;; 6809 ;; 		tst	sysvar_KEYB_ESC_ACTION		;or with current ESCAPE status (0=ESC, 1=ASCII)
-;; 6809 ;; 		bne	x_check_event_2_char_into_buf_fromA	;if ASCII or no match E4A8 to enter byte in buffer
-;; 6809 ;; 		lda	sysvar_BREAK_EFFECT		;else get ESCAPE/BREAK action byte
-;; 6809 ;; 		rora					;Rotate to get ESCAPE bit into carry
-;; 6809 ;; 		lda	zp_mos_OSBW_Y			;get character back in A
-;; 6809 ;; 		bcs	LE513				;and if escape disabled exit with carry clear
-;; 6809 ;; 		ldy	#$06				;else signal EVENT 6 Escape pressed
-;; 6809 ;; 		jsr	x_CAUSE_AN_EVENT		;
-;; 6809 ;; 		bcc	LE513				;if event handles ESCAPE then exit with carry clear
-;; 6809 ;; 		jsr	mos_OSBYTE_125			;else set ESCAPE flag
-;; 6809 ;; LE513		CLC					;clear carry 
-;; 6809 ;; 		rts					;and exit
-;; 6809 ;; ;; ----------------------------------------------------------------------------
-;; 6809 ;; ;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 
-;; 6809 ;; mos_interpret_keyb_byte					; LE515
-;; 6809 ;; 		rora					;get bit 1 into carry
-;; 6809 ;; 		bcc	mos_interpret_keyb_byte2
-;; 6809 ;; 		puls	A				;get back A
-;; 6809 ;; 		lbra	x_exit_with_carry_clear		;if carry is set return
-;; 6809 ;; 						;else cursor keys are 'soft'
-;; 6809 ;; 
-;; 6809 ;; mos_interpret_keyb_byte2
-;; 6809 ;; 		lda	,S				;leave A on stack
-;; 6809 ;; 		lsra					;get high nybble into lo
-;; 6809 ;; 		lsra					;
-;; 6809 ;; 		lsra					;
-;; 6809 ;; 		lsra					;A=8-&F
-;; 6809 ;; 		eora	#$04				;and invert bit 2
-;; 6809 ;; 							;&8 becomes &C
-;; 6809 ;; 							;&9 becomes &D
-;; 6809 ;; 							;&A becomes &E
-;; 6809 ;; 							;&B becomes &F
-;; 6809 ;; 							;&C becomes &8
-;; 6809 ;; 							;&D becomes &9
-;; 6809 ;; 							;&E becomes &A
-;; 6809 ;; 							;&F becomes &B
-;; 6809 ;; 		m_tay					;Y=A = 8-F
-;; 6809 ;; 		lda	sysvar_KEYB_C0CF_INSERT_INT-8,y	;read 026D to 0274 code interpretation status
-;; 6809 ;; 							;0=ignore key, 1=expand as 'soft' key
-;; 6809 ;; 							;2-&FF add this to base for ASCII code
-;; 6809 ;; 							;note that provision is made for keypad operation
-;; 6809 ;; 							;as codes &C0-&FF cannot be generated from keyboard
-;; 6809 ;; 							;but are recognised by OS
-;; 6809 ;; 							;
-;; 6809 ;; 
-;; 6809 ;; 		cmpa	#$01				;is it 01
-;; 6809 ;; 		lbeq	x_expand_soft_key_strings	;if so expand as 'soft' key via E594
-;; 6809 ;; 		puls	A				;else get back original byte
-;; 6809 ;; 		blo	x_get_byte_from_buffer		;then code 0 must have
-;; 6809 ;; 							;been returned so E539 to ignore
-;; 6809 ;; 		anda	#$0F				;else add ASCII to BASE key number so clear hi nybble
-;; 6809 ;; 		adda	sysvar_KEYB_C0CF_INSERT_INT-8,y	;add ASCII base
-;; 6809 ;; 		CLC					;clear carry
-;; 6809 ;; 		rts					;and exit
-
 
 ;; ----------------------------------------------------------------------------
 
@@ -559,4 +479,77 @@ jmpKEYV
 		move.l	(KEYV),2(SP)				; place vector contents above
 		rtr						; jump to vector
 
+*************************************************************************
+ *                                                                       *
+ *        OSBYTE &76 (118) SET LEDs to Keyboard Status                   *
+ *                                                                       *
+ *************************************************************************
+                          ;osbyte entry with carry set
+                         ;called from &CB0E, &CAE3, &DB8B
 
+mos_OSBYTE_118					; LE9D9
+		move.w	SR,-(SP)			;PUSH P
+		SEI					;DISABLE INTERUPTS
+		move.b	#$40,D0				;switch on CAPS and SHIFT lock lights
+		bsr	x_keyb_leds_test_esc		;via subroutine
+		bmi	LE9E7				;if ESCAPE exists (M set) E9E7
+		andi	#~(CC_C_M|CC_V_M),CCR		;else clear V and C
+							;before calling main keyboard routine to
+		bsr	jmpKEYV				;switch on lights as required
+LE9E7							;get back flags
+		move.b	1(SP),D0			;and rotate carry into bit 0
+		rtr					;Return to calling routine
+;; ----------------------------------------------------------------------------
+;; Turn on keyboard lights and Test Escape flag; called from &E1FE, &E9DD  ;  
+x_keyb_leds_test_esc
+		bcc	LE9F5
+		move.b	#$07,sheila_SYSVIA_orb
+		move.b	#$06,sheila_SYSVIA_orb
+LE9F5		tst.b	zp_mos_ESC_flag
+		rts
+;
+
+
+
+;; 6809 ;; ;; ----------------------------------------------------------------------------
+;; 6809 ;; ;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 
+;; 6809 ;; mos_interpret_keyb_byte					; LE515
+;; 6809 ;; 		rora					;get bit 1 into carry
+;; 6809 ;; 		bcc	mos_interpret_keyb_byte2
+;; 6809 ;; 		puls	A				;get back A
+;; 6809 ;; 		lbra	x_exit_with_carry_clear		;if carry is set return
+;; 6809 ;; 						;else cursor keys are 'soft'
+;; 6809 ;; 
+;; 6809 ;; mos_interpret_keyb_byte2
+;; 6809 ;; 		lda	,S				;leave A on stack
+;; 6809 ;; 		lsra					;get high nybble into lo
+;; 6809 ;; 		lsra					;
+;; 6809 ;; 		lsra					;
+;; 6809 ;; 		lsra					;A=8-&F
+;; 6809 ;; 		eora	#$04				;and invert bit 2
+;; 6809 ;; 							;&8 becomes &C
+;; 6809 ;; 							;&9 becomes &D
+;; 6809 ;; 							;&A becomes &E
+;; 6809 ;; 							;&B becomes &F
+;; 6809 ;; 							;&C becomes &8
+;; 6809 ;; 							;&D becomes &9
+;; 6809 ;; 							;&E becomes &A
+;; 6809 ;; 							;&F becomes &B
+;; 6809 ;; 		m_tay					;Y=A = 8-F
+;; 6809 ;; 		lda	sysvar_KEYB_C0CF_INSERT_INT-8,y	;read 026D to 0274 code interpretation status
+;; 6809 ;; 							;0=ignore key, 1=expand as 'soft' key
+;; 6809 ;; 							;2-&FF add this to base for ASCII code
+;; 6809 ;; 							;note that provision is made for keypad operation
+;; 6809 ;; 							;as codes &C0-&FF cannot be generated from keyboard
+;; 6809 ;; 							;but are recognised by OS
+;; 6809 ;; 							;
+;; 6809 ;; 
+;; 6809 ;; 		cmpa	#$01				;is it 01
+;; 6809 ;; 		lbeq	x_expand_soft_key_strings	;if so expand as 'soft' key via E594
+;; 6809 ;; 		puls	A				;else get back original byte
+;; 6809 ;; 		blo	x_get_byte_from_buffer		;then code 0 must have
+;; 6809 ;; 							;been returned so E539 to ignore
+;; 6809 ;; 		anda	#$0F				;else add ASCII to BASE key number so clear hi nybble
+;; 6809 ;; 		adda	sysvar_KEYB_C0CF_INSERT_INT-8,y	;add ASCII base
+;; 6809 ;; 		CLC					;clear carry
+;; 6809 ;; 		rts					;and exit

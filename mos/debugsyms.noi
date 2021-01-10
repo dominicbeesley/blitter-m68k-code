@@ -5,3 +5,7 @@ W zp_mos_keynumfirst %X08
 W 0x2cb %X08
 W 0x2cc %X08
 W 0x2cd %X08
+W 0x3e0 %X08[32]
+W mosbuf_buf_busy %X08[8]
+W mosbuf_buf_start %X08[8]
+W mosbuf_buf_end %X08[8]

@@ -25,6 +25,6 @@ defaultosvectors
 	dc.l	brkBadCommand-*			;	dummy_vector_RTS		;  LD964 NETV
 	dc.l	brkBadCommand-*			;	dummy_vector_RTS		;  LD966 VDUV
 	dc.l	KEYV_default-*			;	KEYV_default			;  LD968 KEYV
-	dc.l	brkBadCommand-*			;	mos_INSV_default_entry_point	;  LD96A INSV
-	dc.l	brkBadCommand-*			;	mos_REMV_default_entry_point	;  LD96C REMV
-	dc.l	brkBadCommand-*			;	mos_CNPV_default_entry_point	;  LD96E CNPV
+	dc.l	mos_INSV_default_entry_point-*	;	mos_INSV_default_entry_point	;  LD96A INSV
+	dc.l	mos_REMV_default_entry_point-*	;	mos_REMV_default_entry_point	;  LD96C REMV
+	dc.l	mos_CNPV_default_entry_point-*	;	mos_CNPV_default_entry_point	;  LD96E CNPV

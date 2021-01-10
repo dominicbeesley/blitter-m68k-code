@@ -314,8 +314,8 @@ snd_cur_target_amplitude		:= $83A	; Current target amplitude
 snd_num_chans_hold_sync			:= $83B	; Number of channels on hold for sync
 
 snd_parm_wksp				:= $83C	; Sound parameter calculation workspace
-snd_low_parm				:= $83D	; Low order fr:=ency parameter as sent to the sound generator
-snd_high_parm				:= $83E	; High order fr:=ency parameter as sent to the sound generator
+snd_low_parm				:= $83D	; Low order frequency parameter as sent to the sound generator
+snd_high_parm				:= $83E	; High order frequency parameter as sent to the sound generator
 snd_tempx				:= $83F
 
 snd_envelope_defs			:= $8C0
