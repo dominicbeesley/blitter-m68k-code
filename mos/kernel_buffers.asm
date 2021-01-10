@@ -23,9 +23,6 @@
 ;; ----------------------------------------------------------------------------
 ;; : INSERT byte in Keyboard buffer
 x_INSERT_byte_in_Keyboard_buffer			; LE4F1		
-
-		TRACE
-
 		;STY_B	zp_mos_OSBW_Y
 		;clr	zp_mos_OSBW_X
 		clr.b	D1
