@@ -124,6 +124,7 @@ kernel_go_todo
 
 
 
+
 		moveq	#0,D4
 .lll5		move.l	D4,D0
 		bsr	PrHex_l
@@ -155,6 +156,19 @@ kernel_go_todo
 		SWI	OS_WriteC
 
 		addq.l	#1,D4
+
+		move.w	#$0FFF, D7
+		and.w	D4,D7
+		bne	.lll5
+
+		; change mode
+		SWI	OS_WriteI+22
+		move.w	D4, D0
+		lsr.w	#8, D0
+		lsr.w	#4, D0
+		andi.b	#7, D0
+		SWI	OS_WriteC
+
 		bra	.lll5
 
 
@@ -564,7 +578,7 @@ mos_STAR_EXEC:
 
 
 
-test_d:		dc.b	"Blitter Board 68008", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
+test_d:		dc.b	"Blitter Board 68000", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
 str_addr_err:	dc.b	"address error",0
 str_bus_err:	dc.b	"bus error",0
 str_div0:	dc.b	"div0",0

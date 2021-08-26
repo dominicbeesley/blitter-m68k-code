@@ -31,7 +31,7 @@ hostfs:: all
 	cp $(TARGETS) $(HOSTFSDIR)
 
 
-mos68k.bin: $(OBJS2) debugsyms.noi
+mos68k.bin: $(OBJS2) debugsyms.noi mos68k.lnk.txt 
 	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $(OBJS2) > mos68k.sym
 	../scripts/getsymbols.pl <$(basename $@).sym >$(basename $@).noi
 	if [[ -e debugsyms.noi ]]; then \

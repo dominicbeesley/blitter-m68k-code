@@ -288,7 +288,8 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		;enter user mode set up a stack and then enable interrupts and change mode
 		move.l	#$00008000, A0
 		move.l	A0,USP
-		andi.w	#$00FF, SR
+		ori.w	#$8000, SR		; trace!
+		andi.w	#$80FF, SR
 
 
 		bra	kernel_go_todo

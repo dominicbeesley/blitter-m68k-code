@@ -1,10 +1,10 @@
 SECTIONS
 {
-	. = 0x8D0000;
+	. = 0x7D0000;
 	.romheader : { *(romheader) }
 	.code : { *(code) }
-	. = 0x8D3C00;
+	. = 0x7D3C00;
 	.font : { *(font) }
-	. = 0x8D3F00;
+	. = 0x7D3F00;
 	.romvectors : { *(romvectors) }
 };
