@@ -75,9 +75,9 @@ TSTG
 		dc.b	0			; 4: NO TASKING SUPPORT
 		dc.w	0,$FFFF			; 5-8: LOW AND HIGH LIMIT OF MAPPED MEM (NONE)		-- note 68008 has 24 bit address space "paging" register is just the high MSB!
 		dc.b	B1-B0			; 9:  BREAKPOINT INSTR LENGTH
-B0		trap	#0			; 10: BREAKPOINT INSTRUCTION
+B0		trap	#15			; 10: BREAKPOINT INSTRUCTION
 B1		
-		dc.b	"68008"
+		dc.b	"68K"
 		dc.b	" monitor V1.1"	; DESCRIPTION, ZERO
 		dc.b	"-BBC"
 		dc.b	0 
@@ -120,7 +120,7 @@ INT_ENTRY_GO
 
 		lea.l	deice_stack,A7 			
 
-ENTER_MON	moveq	#FN_RUN_TARG,D0
+ENTER_MON	move.b	#FN_RUN_TARG,D0
 		bra	RETURN_REGS
 
 MAIN		lea.l	deice_stack,A7 
@@ -165,7 +165,7 @@ MA80		bsr	GETCHAR			; GET THE CHECKSUM
 *  Process the message.
 		lea	COMBUF,A0
 		move.b	(A0)+,D0		; GET THE FUNCTION CODE
-		clr.w	D1
+		clr.l	D1
 		move.b 	(A0)+,D1		; GET THE LENGTH
 		cmp.b	#FN_GET_STAT,D0
 		beq	TARGET_STAT
@@ -179,8 +179,8 @@ MA80		bsr	GETCHAR			; GET THE CHECKSUM
 		beq	WRITE_REGS
 		cmp.b	#FN_RUN_TARG,D0
 		beq	RUN_TARGET
-		cmp.b	#FN_SET_BYTE,D0
-		beq	SET_BYTES
+		cmp.b	#FN_SET_WORDS,D0
+		beq	SET_WORDS
 		cmp.b	#FN_IN,D0
 		beq	IN_PORT
 		cmp.b	#FN_OUT,D0
@@ -363,7 +363,7 @@ RUN_TARGET
 
 *===========================================================================
 *
-*  Set target byte(s):	FN, len { (page, ahi, alow, data), (...)... }  - note address sense reversed from noice
+*  Set target words(s):	FN, len { (page, ahi, alow, data), (...)... }  - note address sense reversed from noice
 *
 *  Entry with D0=function code, D1=data size, A0=COMBUF+2
 *
@@ -373,21 +373,22 @@ RUN_TARGET
 *
 *  This function is used primarily to set and clear breakpoints
 *
+*  NOTE: this is different to the standard NoICE protocol as it works with 32 bit addresses and 16 bit data
 *  
 *
-SET_BYTES
+SET_WORDS
 
 		lea	COMBUF+1,A1		; POINTER TO RETURN BUFFER
 		
 		clr.b	(A1)+			; SET RETURN COUNT AS ZERO
-		lsr.b	D1
-		lsr.b	D1			; LEN/4 = NUMBER OF BYTES TO SET
+					
+		divu	#5,D1			; LEN/5 = NUMBER OF BYTES TO SET
 		subq	#1,D1
 		bmi	SB99			; JIF NO BYTES (COMBUF+1 = 0)
 *
 *  Loop on inserting bytes
 SB10		
-		; get address (big endian)
+		; get 32-bit address (big endian)
 		clr.l	D2
 		move.b	(A0)+,D2
 		swap	D2
@@ -397,21 +398,21 @@ SB10
 		move.l	D2,A2
 
 *
-*  Read current data at byte location
-		move.b	(A2),D2
+*  Read current data at word location
+		move.w	(A2),D2
 *
 *  Insert new data at byte location
-		move.b	(A0),D0			; GET BYTE TO STORE	
-		move.b	D0,(A2)			; WRITE TARGET MEMORY
+		move.w	(A0),D0			; GET BYTE TO STORE	
+		move.w	D0,(A2)			; WRITE TARGET MEMORY
 *
 *  Verify write
-		cmp.b	(A2),D0			; READ TARGET MEMORY
+		cmp.w	(A2),D0			; READ TARGET MEMORY
 
 		bne	SB90			; BR IF INSERT FAILED: ABORT
 *
 *  Save target byte in return buffer
-		move.b	D2,(A1)+
-		addi.b	#1,COMBUF+1		; COUNT ONE RETURN BYTE
+		move.w	D2,(A1)+
+		addi.b	#2,COMBUF+1		; COUNT ONE RETURN WORD
 *
 *  Loop for next byte
 		dbf	D1,SB10			; *LOOP FOR ALL BYTES

@@ -53,7 +53,7 @@ FN_WRITE_M	:=	$FD    ; reply with status (+/-)
 FN_READ_RG	:=	$FC    ; reply with registers
 FN_WRITE_RG	:=	$FB    ; reply with status
 FN_RUN_TARG	:=	$FA    ; reply (delayed) with registers
-FN_SET_BYTE	:=	$F9    ; reply with data (truncate if error)
+FN_SET_WORDS	:=	$F9    ; reply with data (truncate if error) - NOTE: different to NoICE
 FN_IN		:=	$F8    ; input from port
 FN_OUT		:=	$F7    ; output to port
 *
