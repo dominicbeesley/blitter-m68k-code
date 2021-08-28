@@ -132,7 +132,7 @@ kernel_swi_handle_err_check:
 		jmp	(A0)
 
 
-SWI_TABLE_LOW_COUNT	EQU	$20
+SWI_TABLE_LOW_COUNT	EQU	$80
 SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_OS_WriteS-*			; 01
 		dc.w	SWI_OS_Write0-*			; 02
@@ -155,7 +155,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_OS_IntOn-*			; 13
 		dc.w	SWI_OS_IntOff-*			; 14
 		dc.w	SWI_UKSwi-*			; 15
-		dc.w	SWI_UKSwi-*			; 16
+		dc.w	SWI_OS_EnterOS-*		; 16
 		dc.w	SWI_UKSwi-*			; 17
 		dc.w	SWI_UKSwi-*			; 18
 		dc.w	SWI_UKSwi-*			; 19
@@ -183,6 +183,92 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 2F
 
 
+		dc.w	SWI_UKSwi-*			; 30
+		dc.w	SWI_UKSwi-*			; 31
+		dc.w	SWI_UKSwi-*			; 32
+		dc.w	SWI_UKSwi-*			; 33
+		dc.w	SWI_UKSwi-*			; 34
+		dc.w	SWI_UKSwi-*			; 35
+		dc.w	SWI_UKSwi-*			; 36
+		dc.w	SWI_UKSwi-*			; 37
+		dc.w	SWI_UKSwi-*			; 38
+		dc.w	SWI_UKSwi-*			; 39
+		dc.w	SWI_UKSwi-*			; 3A
+		dc.w	SWI_UKSwi-*			; 3B
+		dc.w	SWI_UKSwi-*			; 3C
+		dc.w	SWI_UKSwi-*			; 3D
+		dc.w	SWI_UKSwi-*			; 3E
+		dc.w	SWI_UKSwi-*			; 3F
+
+
+		dc.w	SWI_UKSwi-*			; 40
+		dc.w	SWI_UKSwi-*			; 41
+		dc.w	SWI_UKSwi-*			; 42
+		dc.w	SWI_UKSwi-*			; 43
+		dc.w	SWI_UKSwi-*			; 44
+		dc.w	SWI_UKSwi-*			; 45
+		dc.w	SWI_UKSwi-*			; 46
+		dc.w	SWI_UKSwi-*			; 47
+		dc.w	SWI_UKSwi-*			; 48
+		dc.w	SWI_UKSwi-*			; 49
+		dc.w	SWI_UKSwi-*			; 4A
+		dc.w	SWI_UKSwi-*			; 4B
+		dc.w	SWI_UKSwi-*			; 4C
+		dc.w	SWI_UKSwi-*			; 4D
+		dc.w	SWI_UKSwi-*			; 4E
+		dc.w	SWI_UKSwi-*			; 4F
+
+		dc.w	SWI_UKSwi-*			; 50
+		dc.w	SWI_UKSwi-*			; 51
+		dc.w	SWI_UKSwi-*			; 52
+		dc.w	SWI_UKSwi-*			; 53
+		dc.w	SWI_UKSwi-*			; 54
+		dc.w	SWI_UKSwi-*			; 55
+		dc.w	SWI_UKSwi-*			; 56
+		dc.w	SWI_UKSwi-*			; 57
+		dc.w	SWI_UKSwi-*			; 58
+		dc.w	SWI_UKSwi-*			; 59
+		dc.w	SWI_UKSwi-*			; 5A
+		dc.w	SWI_UKSwi-*			; 5B
+		dc.w	SWI_UKSwi-*			; 5C
+		dc.w	SWI_UKSwi-*			; 5D
+		dc.w	SWI_UKSwi-*			; 5E
+		dc.w	SWI_UKSwi-*			; 5F
+
+		dc.w	SWI_UKSwi-*			; 60
+		dc.w	SWI_UKSwi-*			; 61
+		dc.w	SWI_UKSwi-*			; 62
+		dc.w	SWI_UKSwi-*			; 63
+		dc.w	SWI_UKSwi-*			; 64
+		dc.w	SWI_UKSwi-*			; 65
+		dc.w	SWI_UKSwi-*			; 66
+		dc.w	SWI_UKSwi-*			; 67
+		dc.w	SWI_UKSwi-*			; 68
+		dc.w	SWI_UKSwi-*			; 69
+		dc.w	SWI_UKSwi-*			; 6A
+		dc.w	SWI_UKSwi-*			; 6B
+		dc.w	SWI_UKSwi-*			; 6C
+		dc.w	SWI_UKSwi-*			; 6D
+		dc.w	SWI_UKSwi-*			; 6E
+		dc.w	SWI_UKSwi-*			; 6F
+
+		dc.w	SWI_UKSwi-*			; 70
+		dc.w	SWI_UKSwi-*			; 71
+		dc.w	SWI_UKSwi-*			; 72
+		dc.w	SWI_UKSwi-*			; 73
+		dc.w	SWI_UKSwi-*			; 74
+		dc.w	SWI_UKSwi-*			; 75
+		dc.w	SWI_UKSwi-*			; 76
+		dc.w	SWI_UKSwi-*			; 77
+		dc.w	SWI_UKSwi-*			; 78
+		dc.w	SWI_UKSwi-*			; 79
+		dc.w	SWI_UKSwi-*			; 7A
+		dc.w	SWI_UKSwi-*			; 7B
+		dc.w	SWI_OS_LeaveOS-*		; 7C
+		dc.w	SWI_UKSwi-*			; 7D
+		dc.w	SWI_UKSwi-*			; 7E
+		dc.w	SWI_UKSwi-*			; 7F
+
 
 SWI_Exit_Error	; an error occurred work out if original SWI was an error returning one
 		; swi number should be TOS
@@ -203,6 +289,10 @@ SWI_OS_GenerateError
 SWI_OS_IntOn	andi.w	#$F8FF,8(SP)
 		rts
 SWI_OS_IntOff	ori.w	#$0700,8(SP)
+		rts
+SWI_OS_EnterOS	ori.w	#$2000,8(SP)
+		rts
+SWI_OS_LeaveOS	andi.w	#$DFFF,8(SP)
 		rts
 
 ;; TODO: remove this when all implemented

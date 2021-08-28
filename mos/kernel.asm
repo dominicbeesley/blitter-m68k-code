@@ -75,6 +75,14 @@
 
 kernel_go_todo
 
+		; test Enter/Leave OS
+
+		SWI	OS_EnterOS
+
+		ori.w	#$8000, SR
+
+		SWI	OS_LeaveOS
+
 		lea.l	0, A0
 		lea.l	0, A1
 		move.l	#$FFFF0100,(A0)
@@ -92,6 +100,7 @@ kernel_go_todo
 		move.b  D0,(A1)
 
 
+		trap	#14
 		move.l	#$C0000700, D0
 		move.l	#$100, D1
 		moveq.l #' ', D2
