@@ -415,7 +415,7 @@ SWI_OS_WriteI
 
 SWI_OS_ReadLine
 		move.l 	D4,-(SP)
-		; move fag bits to top of D4
+		; move flag bits to top of D4
 		andi.l	#$00FFFFFF, D4
 		eor.l	D0,D4
 
