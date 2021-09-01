@@ -656,7 +656,7 @@ mos_OSBYTE_129					; LE713
 		tst.b	D2				; check Y negative
 		bmi	LE721				; if Y=&FF the E721
 		CLI					; else allow interrupts
-		bsr	x_OSBYTE_129			; and go to timed routine
+		bsr	OSBYTE_129_timed			; and go to timed routine
 		bcs	LE71F_tay_c_rts			; if carry set then E71F
 		move.b	D0,D1				; then X=A
 		clr.b	D0				; A=0
@@ -682,7 +682,7 @@ mos_OSBYTE_129_machtype
 
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 129 TIMED ROUTINE; ON ENTRY TIME IS IN X,Y 
-x_OSBYTE_129
+OSBYTE_129_timed
 			move.b	D0,oswksp_INKEY_CTDOWN		; store time in INKEY countdown timer
 			move.b	D1,oswksp_INKEY_CTDOWN+1	; which is decremented every 10ms
 

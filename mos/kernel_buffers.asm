@@ -143,7 +143,7 @@ mos_INSV_default_entry_point					; LE4B3
 		lea	mosbuf_buf_end,A1
 		move.b	(A1,D1.w),D2			; get current buffer pointer
 		andi.w	#$00FF,D2			; make it a 16 bit offset
-		move	D2,D3				; stack B for later
+		move.w	D2,D3				; stack B for later
 		addq.b	#1,D2				; incremenet
 		bne	.1F				; if 0 wrap around
 
@@ -154,8 +154,8 @@ mos_INSV_default_entry_point					; LE4B3
 		beq	insv_buf_full			; buffer is full, cause an event and exit
 		move.b	D2,(A1,D1.w)			; save updated pointer
 		bsr	get_buffer_ptr
-		move.b	D0,(A0,D2.w)			; store the byte in the buffer
-		movem.l	(SP)+,D2-D3/A0-A2			; exit with carry clear
+		move.b	D0,(A0,D3.w)			; store the byte in the buffer (at the old location!)
+		movem.l	(SP)+,D2-D3/A0-A2		; exit with carry clear
 		rte
 
 insv_buf_full	cmp.b	#2,D1				; if it's an input buffer raise an event
@@ -362,12 +362,11 @@ mos_REMV_default_entry_point					; LE464
 		lea	mosbuf_buf_end,A1
 		SEI						;bar interrupts
 		andi.w	#$00FF,D1
+		clr.w	D2
 		move.b	(A2,D1.w),D2				;get output pointer for buffer X
 		cmp.b	(A1,D1.w),D2				;compare to input pointer
 		beq	remv_SEC_ret				;if equal buffer is empty so E4E0 to exit
 		bsr	get_buffer_ptr				;find buffer start pointer	
-		add.w	D1,D2	
-		andi.w	#$00FF,D2		; 68 - make it 16 bit offset!
 		move.b	(A0,D2.w),D0				;get char from buffer
 		btst	#CC_V_B,13(SP)
 		beq	.1F					;V not set branch
@@ -388,7 +387,7 @@ mos_REMV_default_entry_point					; LE464
 		clr.b	D2					;buffer is empty so Y=0
 		bsr	x_CAUSE_AN_EVENT			;and enter EVENT routine to signal EVENT 0 buffer
 								;becoming empty
-.3F		exg	D0,D2					;return char in Y
+.3F		move.b	D0,D2					;return char in Y and A
 		movem.l	(SP)+,A0-A2				;return with carry clear
 		rte
 

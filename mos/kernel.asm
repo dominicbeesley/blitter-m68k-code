@@ -78,14 +78,15 @@
 
 kernel_go_todo
 
+		TRACE
 
-;.readclp
-;
-;		SWI	OS_ReadC
-;		bcs	.skesc
-;		SWI	OS_WriteC
-;		bra	.readclp
-;.skesc
+
+.readclp
+		SWI	OS_ReadC
+		bcs	.skesc
+		SWI	OS_WriteC
+		bra	.readclp
+.skesc
 
 		; test Enter/Leave OS
 
