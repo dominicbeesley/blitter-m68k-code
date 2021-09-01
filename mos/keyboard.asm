@@ -24,7 +24,7 @@ keyb_input_and_housekeeping			; LEEDA
 		movem.l	(SP)+,D3-D4/A0
 		moveq	#-1,D1				;
 		move.b	zp_mos_keynumlast,D0		;get value of most recently pressed key
-		or.b	zp_mos_keynumfirst,D1		;Or it with previous key to check for presses
+		or.b	zp_mos_keynumfirst,D0		;Or it with previous key to check for presses
 		bne	LEEE8				;if A=0 no keys pressed so off you go
 		move.b	#$81, sheila_SYSVIA_ier		;else enable keybd interupt only by writing bit 7
 							;and bit 0 of system VIA interupt register 
@@ -76,11 +76,6 @@ keyb_check_key_code_API
 
 
 
-keyb_hw_enable_scan2
-		movem.l	(SP)+,D3-D4/A0
-keyb_hw_enable_scan
-		move.b	#$0B,sheila_SYSVIA_orb
-		rts
 
  *************************************************************************
  *                                                                       *
@@ -199,30 +194,30 @@ x_get_ASCII_code
 		move.b	sysvar_KEYB_TAB_CHAR,D0		;get TAB character
 .skntab		move.b	sysvar_KEYB_STATUS,D3		;get keyboard status
 							;store it in &FA
-		btst	#KEYST_B_6_CTRL,D3		;CTRL pressed into Z
-		beq	LEFA9				;if CTRL NOT pressed EFA9
+		rol.b	#1,D3				;CTRL pressed into bit 7
+		bpl	LEFA9				;if CTRL NOT pressed EFA9
 		move.b	zp_mos_keynumfirst,D1		;get no. of previously pressed key
 LEFA4		bne	LEF4A				;if not 0 goto EF4A to reset repeat system etc.
 		bsr	x_Implement_CTRL_codes		;else perform code changes for CTRL
 
-LEFA9		btst	#KEYST_B_5_SHLN,D3		;move shift lock into Z
-LEFAB		bne	LEFB5				;if not effective goto EFB5 else
+LEFA9		rol.b	#1,D3				;move shift lock into bit 7
+LEFAB		bmi	LEFB5				;if not effective goto EFB5 else
 		bsr	x_Modify_code_as_if_SHIFT	;make code changes for SHIFT
-
-		btst	#KEYST_M_4_CALK,D3		;move CAPS LOCK into bit 7
+		
+		rol.b	#1,D3				;caps lock into b7
 		bra	LEFC1				;and Jump to EFC1
 
-LEFB5		btst	#KEYST_M_4_CALK,D3		;move CAPS LOCK into bit 7
-		bne	LEFC6				;if not effective goto EFC6
+LEFB5		rol.b	#1,D3				;move CAPS LOCK into bit 7
+		bmi	LEFC6				;if not effective goto EFC6
 		bsr	mos_CHECK_FOR_ALPHA_CHARACTER	;else make changes for CAPS LOCK on, return with 
 							;C clear for Alphabetic codes
 		bcs	LEFC6				;if carry set goto EFC6 else make changes for
 		bsr	x_Modify_code_as_if_SHIFT	;SHIFT as above
 
-LEFC1		btst	#KEYST_B_7_SHEN,D3		;if shift enabled bit is clear
-		bne	LEFD1				;goto EFD1
-LEFC6		btst	#KEYST_M_3_SHIFT,D3		;else get shift bit into z
-		beq	LEFD1				;if not set goto EFD1
+LEFC1		tst.b	sysvar_KEYB_STATUS		;if shift enabled bit is clear
+		bpl	LEFD1				;goto EFD1
+LEFC6		rol.b	#1,D3				;else get shift bit into z
+		bpl	LEFD1				;if not set goto EFD1
 		move.b	zp_mos_keynumfirst,D1		;get previous key press
 		bne	LEFA4				;if not 0 reset repeat system etc. via EFA4
 		bsr	x_Modify_code_as_if_SHIFT	;else make code changes for SHIFT
@@ -249,6 +244,7 @@ LEFF8		move.b	zp_mos_keynumfirst,D1		;get &ED
 		; note pointer/offset to zp_mos_keynumlast!
 		move.b	#zp_mos_keynumlast & $FF,D2	;get first keypress into Y (DB: last!)
 		bsr	clc_then_mos_OSBYTE_122		;scan keyboard from &10 (osbyte 122)
+		tst.b	D1
 		bmi	LF00C				;if exit is negative goto F00C
 		move.b	zp_mos_keynumlast,zp_mos_keynumfirst
 							;else make last key the
@@ -260,13 +256,14 @@ LF00C		bra	keyb_input_and_housekeeping	;go back to EEDA
 ;; ----------------------------------------------------------------------------
 ;; Key pressed interrupt entry point; enters with X=key 
 KEYV_default_keypress_IRQ				; LF00F
-		clr.b	D1				; DB ??? not sure what is what here on BeebEm always seems to be X=0 here!
+		;;clr.b	D1				; DB ??? not sure what is what here on BeebEm always seems to be X=0 here!
 		bsr	keyb_check_key_code_API		;check if key pressed
 LF012		tst.b	zp_mos_keynumlast		;get previous key press
 		bne	LF00C				;if none back to housekeeping routine
 		;TODO: should this be pointer to zp or value from zp?
 		move.b	#zp_mos_keynumfirst & $FF,D2	;get last keypress into Y
 		bsr	clc_then_mos_OSBYTE_122		;and scan keyboard
+		tst.b	D1
 		bmi	LF00C				;if negative on exit back to housekeeping
 		bra	LF007				;else back to store X and reset keyboard delay etc.
 ;; Set Autorepeat countdown timer
@@ -388,19 +385,25 @@ LF103		;-- TODO68: Check sense of compare!
 LF11E		add.b	#$10,D0				;add 16
 		bpl	LF103				;and do it again if 0=<result<128
 
-LF123		subq	#1,D1				;decrement X
-		bpl	LF0E3				;scan again if greater than 0
+LF123		dbf	D1,LF0E3			;decrement X
+							;scan again if greater than 0
 		move.b	D1,D0				;
 LF127		move.b	D0,D1				;
 		move.w	(SP)+,CCR			;pull flags
 		movem.l	(SP)+,D3-D4/A0
 keyb_enable_scan_IRQonoff				; LF129
 		bsr	keyb_hw_enable_scan		;call autoscan		
-		; -TODO68: Should we be doing this?
-		andi	#$FCFF,SR			;allow interrupts 
-		ori	#$0700,SR			;disable interrupts
+		CLI					;allow interrupts 
+		SEI					;disable interrupts		
+keyb_hw_enable_scan
+		move.b	#$0B,sheila_SYSVIA_orb
 		rts
-		
+
+keyb_hw_enable_scan2
+		movem.l	(SP)+,D3-D4/A0
+		bra	keyb_hw_enable_scan
+
+
 ;; ----------------------------------------------------------------------------
 ;; CHECK FOR ALPHA CHARACTER; ENTRY  character in A ; exit with carry set if non-Alpha character 
 mos_CHECK_FOR_ALPHA_CHARACTER			; LE4E3

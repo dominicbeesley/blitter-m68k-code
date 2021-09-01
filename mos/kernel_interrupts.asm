@@ -318,7 +318,6 @@ irq_set_sysvia_ifr_rti					; LDE6E
 irq_keyboard					; LDE72
 		btst	#0,D0
 		beq	issue_unknown_interrupt		;if bit 7 clear not a keyboard interrupt
-		TRACE
 		bsr	mos_enter_keyboard_routines	;else scan keyboard
 		moveq	#$01,D0				;A=1
 		bra	irq_set_sysvia_ifr_rti		;and off to reset interrupt and exit
