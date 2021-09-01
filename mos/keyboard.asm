@@ -722,8 +722,8 @@ LDEE6			tst.b	zp_mos_ESC_flag			; check ESCAPE flag if bit 7 set Escape pressed
 	 		bne	LDEE6				; if it hasn't carry on
 	 		bra	mos_RDCHV_return_CS_restore_A	; else restore A and exit
 mos_RDCHV_return_SEC_ESC				; LDF00
+ 			move.b	#$1B,D0				; return ESCAPE 			
  			SEC					; set carry
- 			move.b	#$1B,D0				; return ESCAPE
  			rts
 mos_RDCHV_return_CS_restore_A				;	LDF05	 
  			move.b	zp_mos_OS_wksp, D0
