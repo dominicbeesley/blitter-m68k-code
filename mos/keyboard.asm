@@ -14,6 +14,7 @@
 		xdef	KEYV_default
 		xdef	mos_OSBYTE_118
 		xdef 	x_keyb_leds_test_esc
+		xdef	mos_RDCHV_default_entry
 
 		SECTION "code"
 
@@ -511,22 +512,20 @@ LE9F5		tst.b	zp_mos_ESC_flag
 
 
 
-;; 6809 ;; ;; ----------------------------------------------------------------------------
-;; 6809 ;; ;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 
-;; 6809 ;; mos_interpret_keyb_byte					; LE515
-;; 6809 ;; 		rora					;get bit 1 into carry
-;; 6809 ;; 		bcc	mos_interpret_keyb_byte2
-;; 6809 ;; 		puls	A				;get back A
-;; 6809 ;; 		lbra	x_exit_with_carry_clear		;if carry is set return
-;; 6809 ;; 						;else cursor keys are 'soft'
-;; 6809 ;; 
-;; 6809 ;; mos_interpret_keyb_byte2
-;; 6809 ;; 		lda	,S				;leave A on stack
-;; 6809 ;; 		lsra					;get high nybble into lo
-;; 6809 ;; 		lsra					;
-;; 6809 ;; 		lsra					;
-;; 6809 ;; 		lsra					;A=8-&F
-;; 6809 ;; 		eora	#$04				;and invert bit 2
+;; ----------------------------------------------------------------------------
+;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 
+mos_interpret_keyb_byte					; LE515
+		ror	#1,D0				;get bit 1 into carry
+		bcc	mos_interpret_keyb_byte2
+		move.b	(A7)+,D0			;get back A
+		bra	x_exit_with_carry_clear		;if carry is set return
+						;else cursor keys are 'soft'
+
+mos_interpret_keyb_byte2
+		clr.w	D2
+		move.b	1(A7),D2			;leave A on stack
+		lsr.b	#4,D2					;get high nybble into lo
+		eor.b	#$04,D2				;and invert bit 2
 ;; 6809 ;; 							;&8 becomes &C
 ;; 6809 ;; 							;&9 becomes &D
 ;; 6809 ;; 							;&A becomes &E
@@ -535,8 +534,8 @@ LE9F5		tst.b	zp_mos_ESC_flag
 ;; 6809 ;; 							;&D becomes &9
 ;; 6809 ;; 							;&E becomes &A
 ;; 6809 ;; 							;&F becomes &B
-;; 6809 ;; 		m_tay					;Y=A = 8-F
-;; 6809 ;; 		lda	sysvar_KEYB_C0CF_INSERT_INT-8,y	;read 026D to 0274 code interpretation status
+		lea	sysvar_KEYB_C0CF_INSERT_INT-8,A0
+	 	move.b	(A0,D2.w),D0			;read 026D to 0274 code interpretation status
 ;; 6809 ;; 							;0=ignore key, 1=expand as 'soft' key
 ;; 6809 ;; 							;2-&FF add this to base for ASCII code
 ;; 6809 ;; 							;note that provision is made for keypad operation
@@ -544,12 +543,282 @@ LE9F5		tst.b	zp_mos_ESC_flag
 ;; 6809 ;; 							;but are recognised by OS
 ;; 6809 ;; 							;
 ;; 6809 ;; 
-;; 6809 ;; 		cmpa	#$01				;is it 01
-;; 6809 ;; 		lbeq	x_expand_soft_key_strings	;if so expand as 'soft' key via E594
-;; 6809 ;; 		puls	A				;else get back original byte
-;; 6809 ;; 		blo	x_get_byte_from_buffer		;then code 0 must have
-;; 6809 ;; 							;been returned so E539 to ignore
-;; 6809 ;; 		anda	#$0F				;else add ASCII to BASE key number so clear hi nybble
-;; 6809 ;; 		adda	sysvar_KEYB_C0CF_INSERT_INT-8,y	;add ASCII base
-;; 6809 ;; 		CLC					;clear carry
-;; 6809 ;; 		rts					;and exit
+ 		cmp.b	#$01,D0				;is it 01
+ 		beq	x_expand_soft_key_strings	;if so expand as 'soft' key via E594
+ 		blo	x_get_byte_from_buffer68	;if above CMP generated Carry then code 0 must have
+ 							;been returned so E539 to ignore
+ 		move.b	(A7)+,D0			;else get back original byte
+ 		and	#$0F,D0				;else add ASCII to BASE key number so clear hi nybble
+ 		add.b	(A0,D2.w),D0			;add ASCII base
+ 		CLC					;clear carry
+ 		rts					;and exit
+
+x_get_byte_from_buffer68
+		move.b	(A7)+,D0
+		bra	x_get_byte_from_buffer
+
+;; ----------------------------------------------------------------------------
+;; ERROR MADE IN USING EDIT FACILITY
+x_ERROR_EDITING
+		bsr	mos_VDU_7		;	E534
+		move.w	(A7)+,D1
+
+;; get byte from buffer
+x_get_byte_from_buffer					; LE539
+		bsr	mos_OSBYTE_145			;get byte from buffer X
+		bcs	LE593rts			;if buffer empty E593 to exit
+
+;; TODO68K: printer/rs423
+;;		move.b	D0,-(A7)			;else Push byte
+;;		cmp.b	#$01,D1				;and if RS423 input buffer is not the one
+;;		bne	LE549				;then E549
+;;		jsr	LE173				;else oswrch
+;;		ldx	#$01				;X=1 (RS423 input buffer)
+;; 		CLC					;clear (was set) carry
+;;LE549							; LE549
+;; 		move.b  (A7)+,D0			;get back original byte
+;; ;; 6809 ;; 		bcs	LE551				;if carry clear (I.E not RS423 input) E551
+;; ;; 6809 ;; 		LDY_B	sysvar_RS423_MODE		;else Y=RS423 mode (0 treat as keyboard )
+;; ;; 6809 ;; 		bne	x_exit_with_carry_clear		;if not 0 ignore escapes etc. goto E592
+;; ;; 6809 ;; LE551						; LE551
+
+ 		tst.b	D0				;test A (was tay)
+ 		bpl	x_exit_with_carry_clear		;if code is less than &80 its simple so E592
+ 		move.b	D0,-(A7)
+ 		andi.b	#$0F,D0				;else clear high nybble
+ 		cmpi.b	#$0B,D0				;if less than 11 then treat as special code
+ 		blo	mos_interpret_keyb_byte2	;or function key and goto E519 		
+ 		addi.b	#$7C,D0				;else add &7C (&7B +C) to convert codes B-F to 7-B
+ 		move.b	D0,1(A7)			;replace stacked A
+		move.b	sysvar_KEY_CURSORSTAT,D0	;get cursor editing status
+		bne	mos_interpret_keyb_byte		; if not 0 (normal) E515
+		
+		move.b	(A7)+,D0
+		btst	#1,sysvar_OUTSTREAM_DEST
+		bne	x_get_byte_from_buffer		; screen disabled
+ 		cmp.b	#$87,D0				;else is it COPY key
+ 		beq	x_deal_with_COPY_key		;if so E5A6
+ 							; LE575
+ 		move.w	D1,-(A7)
+ 		bsr	x_cursor_start			;execute edit action
+
+ 		move.w	(A7)+,D1
+mos_check_eco_get_byte_from_kbd			; LE577
+		;	TODO econet
+		tst.b	sysvar_ECO_OSRDCH_INTERCEPT	;check econet RDCH flag
+		bpl	x_get_byte_from_key_string	;if not set goto E581
+		moveq	#$06,D0				;else Econet function 6 
+		bra	callNETV
+
+********* get byte from key string **************************************
+;on entry 0268 contains key length
+;and 02C9 key string pointer to next byte
+
+x_get_byte_from_key_string
+		tst.b	sysvar_KEYB_SOFTKEY_LENGTH	;get length of keystring
+		beq	x_get_byte_from_buffer		;if 0 E539 get a character from the buffer
+		clr.w	D0
+		move.b	mosvar_SOFTKEY_PTR,D0		;get soft key expansion pointer
+		lea	soft_keys_start+1,A0
+		move.b	(A0,D0.w),D0			;get character from string
+		addq.b	#1,mosvar_SOFTKEY_PTR		;increment pointer
+		subq.b	#1,sysvar_KEYB_SOFTKEY_LENGTH	;decrement length
+;; exit with carry clear
+x_exit_with_carry_clear
+		CLC					;	E592
+LE593rts	
+		rts					;	E593
+;; ----------------------------------------------------------------------------
+;; expand soft key strings
+x_expand_soft_key_strings				; LE594
+		move.b	(A7)+,D1			;restore original code
+		andi.w	#$0F,D1				;blank hi nybble to get key string number
+		lea	soft_keys_ptrs,A0
+		move.b	(A0,D1.w),D0			;get start point
+		move.b	D0,mosvar_SOFTKEY_PTR		;and store it
+		bsr	x_get_keydef_length		;get string length in A
+		move.b	D0,sysvar_KEYB_SOFTKEY_LENGTH	;and store it
+		bra	mos_check_eco_get_byte_from_kbd	;if not 0 then get byte via E577 and exit
+
+;; deal with COPY key
+x_deal_with_COPY_key
+		move.w	D1,-(A7)
+		bsr	x_cursor_COPY				;	E5A8
+		tst.b	D0
+		beq	x_ERROR_EDITING				;	E5AC
+		move.w	(A7)+,D1
+		CLC						;	E5B1
+		rts
+
+
+; OSBYTE 129   Read key within time limit; X and Y contains either time limit in centi seconds Y=&7F max ; or Y=&FF and X=-ve INKEY value 
+mos_OSBYTE_129					; LE713
+		tst.b	D2				; check Y negative
+		bmi	LE721				; if Y=&FF the E721
+		CLI					; else allow interrupts
+		bsr	x_OSBYTE_129			; and go to timed routine
+		bcs	LE71F_tay_c_rts			; if carry set then E71F
+		move.b	D0,D1				; then X=A
+		clr.b	D0				; A=0
+LE71F_tay_c_rts	move.b	D0,D2				; Y=A
+		rts					; and return
+;; ----------------------------------------------------------------------------
+LE721		tst.b	D1				; A=X
+		beq	mos_OSBYTE_129_machtype
+		eor.b	#$7F,D1				; convert to keyboard input
+		SEC
+		bsr	jmpKEYV				; then scan keyboard
+		rol.b	#1,D0				; put bit 7 into carry
+LE729		moveq	#-1,D1				; X=&FF
+		bcs	LE731				; if bit 7 of A was set goto E731 (RTS)
+		moveq   #0,D1				; else X=0
+		move.l	D1,D2				; and Y=0
+LE731		rts					; and exit
+mos_OSBYTE_129_machtype
+		move.b	#mos_MACHINE_TYPE_BYTE,D1
+		moveq	#-1,D2
+		rts
+
+
+;; ----------------------------------------------------------------------------
+;; OSBYTE 129 TIMED ROUTINE; ON ENTRY TIME IS IN X,Y 
+x_OSBYTE_129
+			move.b	D0,oswksp_INKEY_CTDOWN		; store time in INKEY countdown timer
+			move.b	D1,oswksp_INKEY_CTDOWN+1	; which is decremented every 10ms
+
+			; store flag in top bit of D0
+			move.b	#$FF, zp_mos_OS_wksp		; A=&FF
+			bra	LDEC7				; goto DEC7
+;; RDCHV entry point	  read a character
+mos_RDCHV_default_entry
+	 		move.b	#0, zp_mos_OS_wksp		; signal we entered through RDCHV not OSBYTE 129
+LDEC7								
+		;TODO: EXEC
+;; 6809 ;; 		pshs	B,X,Y				; store X and Y
+;; 6809 ;; 		LDY_B	sysvar_EXEC_FILE		; get *EXEC file handle
+;; 6809 ;; 		beq	LDEE6				; if 0 (not allocated) then DEE6
+;; 6809 ;; 		SEC					; set carry
+;; 6809 ;; 		ror	zp_mos_cfs_critical		; set bit 7 of CFS active flag to prevent  clashes
+;; 6809 ;; 		jsr	OSBGET				; get a byte from the file
+;; 6809 ;; 		pshs	CC				; push processor flags to preserve carry
+;; 6809 ;; 		lsr	zp_mos_cfs_critical		; restore &EB 
+;; 6809 ;; 		puls	CC				; get back flags
+;; 6809 ;; 		bcc	mos_RDCHV_char_found		; and if carry clear, character found so exit via DF03
+;; 6809 ;; 		lda	#$00				; else A=00 as EXEC file empty
+;; 6809 ;; 		sta	sysvar_EXEC_FILE		; store it in exec fil;e handle
+;; 6809 ;; 		jsr	OSFIND				; and close file via OSFIND
+;; 6809 ;; 
+
+
+LDEE6			tst.b	zp_mos_ESC_flag			; check ESCAPE flag if bit 7 set Escape pressed
+ 			bmi	mos_RDCHV_return_SEC_ESC	; so off to DF00
+			move.b	sysvar_CURINSTREAM,D1		; else get current input buffer number
+	 		bsr	mos_check_eco_get_byte_from_kbd	; get a byte from keyboard buffer
+	 		bcc	mos_RDCHV_char_found		; and exit if valid character found
+	 		tst.b	zp_mos_OS_wksp			; check flags
+	 
+	 		bpl	LDEE6				; if entered through RDCHV keep trying
+	 		tst.w	oswksp_INKEY_CTDOWN		; else check if countdown has expired
+	 		bne	LDEE6				; if it hasn't carry on
+	 		bra	mos_RDCHV_return_CS_restore_A	; else restore A and exit
+mos_RDCHV_return_SEC_ESC				; LDF00
+ 			SEC					; set carry
+ 			move.b	#$1B,D0				; return ESCAPE
+ 			rts
+mos_RDCHV_return_CS_restore_A				;	LDF05	 
+ 			move.b	zp_mos_OS_wksp, D0
+mos_RDCHV_char_found	rts				;	LDF03
+ 			
+
+
+;; ----------------------------------------------------------------------------
+;; : set string lengths
+; on entry: 	B is key number (16 bit!)
+; on exit:	A, zp_mos_OS_wksp2+1 - length of current keydef
+x_get_keydef_length
+		move.w	D1,-(A7)
+		lea	soft_keys_start,A0
+		SEI					;bar interrupts
+		move.b	(A0,D1.w),D0			; get start of string
+		move.b	D0,-(A7)			; push start pointer
+		move.b	(soft_keys_end_ptr),D1		; get max pointer
+		sub.b	1(A7),D1			; subtract start from that
+		move.b 	D1, zp_mos_OS_wksp2+1		; max length
+		move.w	#$10,D1
+.lp1		move.b	(A0,D1.w),D0			; get ptr B
+		sub.b	1(A7),D0			; is this pointer after "current"
+		bls	.sk2
+		cmp.b	zp_mos_OS_wksp2+1,D0		; is this shorter?
+		bhs	.sk2				; no
+		move.b	D0,zp_mos_OS_wksp2+1		; yes
+.sk2		dbf	D1,.lp1
+		lea	2(A7),A7			; discard temp val
+		move.b	zp_mos_OS_wksp2+1,D0		;get back latest value of A     
+		move.w	(A7)+,D1			;pull flags, restore X and return						
+		rts					;and return
+
+
+;; ----------------------------------------------------------------------------
+x_cursor_start					; LD8CE
+		move.b	D0,-(A7)			; Push A
+		tst.b	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
+		bne	LD916pulsArts			; if not 0 D916
+		move.b	#$A0,D0				; A=&A0
+		and.b	zp_vdu_status,D0			; else check VDU status byte
+		bne	LD916pulsArts			; if either VDU is disabled or plot to graphics
+						; cursor enabled then D916
+		btst.b	#6,(zp_vdu_status)
+		bne	.sk1				; if cursor editing enabled D8F5
+		move.b	vduvar_CUR_START_PREV,D0	; else get 6845 register start setting
+		andi.b	#$9F,D0				; clear bits 5 and 6
+		ori.b	#$40,D0				; set bit 6 to modify last cursor size setting
+		bsr	x_crtc_set_cursor		; change write cursor format
+		move.w	(vduvar_TXT_CUR_X),(vduvar_TEXT_IN_CUR_X)
+							; set text input cursor from text output cursor
+		bsr	x_setup_read_cursor		; modify character at cursor poistion
+		bset.b	#1,(zp_vdu_status)		; bit 1 of VDU status is set to bar scrolling
+.sk1		bclr.b	#6,(zp_vdu_status)		;bit 6 of VDU status =0 
+		move.b	(A7)+,D0			;Pull A
+		bclr	#7,D0				;clear hi bit (7)
+		; TODO: I suspect this will trash registers - check!
+		bsr	mos_VDU_WRCH			; exec up down left or right?
+		ori.b	#$40,(zp_vdu_status)		; set vdu status
+		rts					;exit 
+;; ----------------------------------------------------------------------------
+x_cursor_COPY					; LD905
+;;	lda	#$20				;A=&20
+;;	bita	zp_vdu_status			
+;;	bvc	LD8CBclrArts			;if bit 6 cursor editing is set
+;;	bne	LD8CBclrArts			;or bit 5 is set exit &D8CB
+		move.b	zp_vdu_status,D0
+		btst	#6,D0
+		beq	LD8CBclrArts			; not cursor editing
+		btst	#5,D0
+		bne	LD8CBclrArts			; VDU5
+		movem	D1/D2,-(A7)
+		move.b	#135, D0
+		SWI	OS_Byte				;read a character from the screen - note changed this to use
+		move	D1,D0				;OSBYTE instead of direct jump to allow 135 to be intercepted
+							;in VNULA utils ROM
+		movem	(A7)+,D1/D2
+		
+		beq	LD917rts			;if A=0 on return exit via D917
+							;else store A
+		move.b	D0,-(A7)
+		bsr	mos_VDU_9			;perform cursor right
+LD916pulsArts	
+		move.b	(A7)+,D0			;	D916
+LD917rts	
+		rts					;	D917
+
+LD8CBclrArts	clr.b	D0
+		rts
+
+;; ----------------------------------------------------------------------------
+
+
+x_cancel_cursor_edit					; LD918
+		andi.b	#$BD,(zp_vdu_status)		;	D918		
+		bsr	x_crtc_reset_cursor		;	D91D
+		move.b	#$0D,D0				;	D920
+		rts					;	D922

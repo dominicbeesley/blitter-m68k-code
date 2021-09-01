@@ -54,6 +54,9 @@
 		xdef		mos_WRCH_default_entry
 
 		xdef		callWRCHV
+		xdef		callRDCHV
+		xdef		callNETV
+		xdef		callBRKV
 
 		xdef		kernel_go_todo
 		xdef		intmsg
@@ -75,43 +78,46 @@
 
 kernel_go_todo
 
+
+;.readclp
+;
+;		SWI	OS_ReadC
+;		bcs	.skesc
+;		SWI	OS_WriteC
+;		bra	.readclp
+;.skesc
+
 		; test Enter/Leave OS
 
-		SWI	OS_EnterOS
 
-		ori.w	#$8000, SR
-
-		SWI	OS_LeaveOS
-
-		lea.l	0, A0
-		lea.l	0, A1
-		move.l	#$FFFF0100,(A0)
-
-		moveq	#4,D1
-		clr.b	D2
-		SEX
-		bra	.tsk	
-
-
-.tlp		move.b  D0,(A1)+
-.tsk		move.b	(A0)+,D0
-		addx.b	D2,D0
-		dbcc	D1,.tlp
-		move.b  D0,(A1)
-
-
-		trap	#14
-		move.l	#$C0000700, D0
-		move.l	#$100, D1
-		moveq.l #' ', D2
-		moveq.l #$7F, D3
-		moveq.l #'#', D4
-		SWI	XOS_ReadLine
-
-		lea.l	$700, A0
-		clr.b	(A0,D1)
-		move.l	A0,D0
-		SWI	XOS_Write0
+;;		lea.l	0, A0
+;;		lea.l	0, A1
+;;		move.l	#$FFFF0100,(A0)
+;;
+;;		moveq	#4,D1
+;;		clr.b	D2
+;;		SEX
+;;		bra	.tsk	
+;;
+;;
+;;.tlp		move.b  D0,(A1)+
+;;.tsk		move.b	(A0)+,D0
+;;		addx.b	D2,D0
+;;		dbcc	D1,.tlp
+;;		move.b  D0,(A1)
+;;
+;;
+;;		move.l	#$C0000700, D0
+;;		move.l	#$100, D1
+;;		moveq.l #' ', D2
+;;		moveq.l #$7F, D3
+;;		moveq.l #'#', D4
+;;		SWI	XOS_ReadLine
+;;
+;;		lea.l	$700, A0
+;;		clr.b	(A0,D1)
+;;		move.l	A0,D0
+;;		SWI	XOS_Write0
 
 
 
@@ -382,6 +388,9 @@ handle_trap_14:
 		ori.w	#$8000, (A7)
 		rte
 handle_trap_15:
+		; adjust return address/PC to point at the breakpoint instructions - we need to re-execute here
+		subi.l	#2,2(A7)
+
 		move    #$2700,SR
 		movem.l	D0-D7/A0-A6,-(A7)
 		moveq	#DEICE_STATE_BP,D0
@@ -540,6 +549,16 @@ mos_WRCH_default_entry
 callWRCHV
 		move.l	(WRCHV),-(SP)
 		rts
+callRDCHV
+		move.l	(RDCHV),-(SP)
+		rts
+callNETV
+		move.l	(NETV),-(SP)
+		rts
+callBRKV
+		move.l	(NETV),-(SP)
+		rts
+
 
 brkBadCommand	trap	#0
 		dc.l	$FE

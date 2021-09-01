@@ -10,6 +10,7 @@
 		xdef	mos_REMV_default_entry_point
 		xdef	mos_CNPV_default_entry_point
 		xdef	mos_flush_all_buffers
+		xdef	mos_OSBYTE_145
 
 		SECTION	"code"
 
@@ -236,7 +237,7 @@ x_Buffer_handling					; LE1AD
 		CLC					;clear carry
 x_Buffer_handling2					; LE1AE
 		move	SR,-(SP)			;save A, flags
-		movem.w	D0,-(SP)			; PRESERVE FLAGS!
+		move.l	D0,-(SP)			; PRESERVE FLAGS!
 		SEI					;set interrupts
 		bcs	LE1BB				;if carry set on entry then E1BB
 ;6809;		lda	mostbl_SERIAL_BAUD_LOOK_UP,x	;else get byte from baud rate/sound data table
@@ -264,7 +265,7 @@ LE1BB
 		move.b	D0,sysvar_VDU_Q_LEN		;and length of VDU queque
 LE1CB		bsr	x_mos_SEV_and_CNPV				;then enter via count purge vector any 
 							;user routines
-		move.w	(SP)+,D0			;restore flags, A and exit
+		move.l	(SP)+,D0			;restore flags, A and exit
 		rtr
 
  *************************************************************************

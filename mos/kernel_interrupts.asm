@@ -239,13 +239,14 @@ mos_SYSTEM_INTERRUPT_6_10mS_Clock
 		bsr	x_CAUSE_AN_EVENT		;
 
 .s2
-
+		; TODO68K: oswksp_INKEY_CTDOWN not aligned, worth sorting out as this is executed a lot!?
 LDDFA		tst.b	oswksp_INKEY_CTDOWN		;get byte of inkey countdown timer
-		bne	LDE07				;if not 0 then DE07
-		tst.b	oswksp_INKEY_CTDOWN+1		;else get next byte
-		beq	LDE0A				;if 0 DE0A
-		subq.b	#1,oswksp_INKEY_CTDOWN+1	;decrement 2B2
-LDE07		subq.b	#1,oswksp_INKEY_CTDOWN		;and 2B1
+		bne	.sk1				;if 0 then skip
+		tst.b   oswksp_INKEY_CTDOWN+1
+		beq	LDE0A
+.sk1		subq.b	#1,oswksp_INKEY_CTDOWN		;little-endian 16 bit decrement
+		bcc	LDE0A
+		subq.b	#1,oswksp_INKEY_CTDOWN+1
 
 
 LDE0A		bclr.b	#7,mosvar_SOUND_SEMAPHORE	;read bit 7 of envelope processing byte

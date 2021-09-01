@@ -12,7 +12,7 @@ defaultosvectors
 	dc.l	brkBadCommand-*			;	mos_default_BYTEV_handler	;  LD94A BYTEV
 	dc.l	brkBadCommand-*			;	mos_WORDV_default_entry		;  LD94C WORDV
 	dc.l	mos_WRCH_default_entry-*	;  LD94E WRCHV
-	dc.l	brkBadCommand-*			;	mos_RDCHV_default_entry		;  LD950 RDCHV
+	dc.l	mos_RDCHV_default_entry-*	;	mos_RDCHV_default_entry		;  LD950 RDCHV
 	dc.l	brkBadCommand-*			;	dummy_vector_RTS		;  LD952 FILEV
 	dc.l	brkBadCommand-*			;	mos_OSARGS			;  LD954 ARGSV
 	dc.l	brkBadCommand-*			;	dummy_vector_RTS		;  LD956 BGETV

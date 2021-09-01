@@ -395,6 +395,7 @@ SB10
 		move.b	(A0)+,D2
 		rol.w	#8,D2
 		move.b	(A0)+,D2
+		andi.b	#$FE,D2			; force word alignment
 		move.l	D2,A2
 
 *
@@ -402,7 +403,9 @@ SB10
 		move.w	(A2),D2
 *
 *  Insert new data at byte location
-		move.w	(A0),D0			; GET BYTE TO STORE	
+		move.b	(A0)+,D0		; GET WORD TO BE STORED	(not aligned!)
+		rol.w	#8,D0
+		move.b	(A0)+,D0
 		move.w	D0,(A2)			; WRITE TARGET MEMORY
 *
 *  Verify write

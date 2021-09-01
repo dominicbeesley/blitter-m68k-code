@@ -112,7 +112,7 @@ low_swi:	asl.l	#1,D0
 		jsr	(A0)				; call the swi
 
 swi_exit:	exg	D0,A0				; swap A0,D0 and retain flags
-		movem.l	(SP)+,D0			; get back swi number (not use movem to retain flags)
+		movem.l	(SP)+,D0			; get back swi number (note use movem to retain flags)
 		bvs	kernel_swi_handle_err_check
 kernok:		exg	D0,A0
 		; now need to get V,C into stacked SR
@@ -128,8 +128,7 @@ kernel_swi_handle_err_check:
 
 		; an error has occurred and X was not set, generate an error
 		lea.l	10(SP),SP
-		move.l	(BRKV),A0
-		jmp	(A0)
+		bra	callBRKV
 
 
 SWI_TABLE_LOW_COUNT	EQU	$80
@@ -137,7 +136,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_OS_WriteS-*			; 01
 		dc.w	SWI_OS_Write0-*			; 02
 		dc.w	SWI_OS_NewLine-*		; 03
-		dc.w	SWI_NOWT-*			; 04
+		dc.w	SWI_OS_ReadC-*			; 04
 		dc.w	SWI_NOWT-*			; 05
 		dc.w	SWI_NOWT-*			; 06
 		dc.w	SWI_UKSwi-*			; 07
@@ -265,7 +264,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 7A
 		dc.w	SWI_UKSwi-*			; 7B
 		dc.w	SWI_OS_LeaveOS-*		; 7C
-		dc.w	SWI_UKSwi-*			; 7D
+		dc.w	SWI_OS_ReadLine32-*		; 7D
 		dc.w	SWI_UKSwi-*			; 7E
 		dc.w	SWI_UKSwi-*			; 7F
 
@@ -326,7 +325,11 @@ ErrBlk_UKSwi	dc.l	$1e6
 		dc.b    "No Such SWI", 0
 
 
+; TODO: just move to callRDCHV - should that ever return with V set?
 SWI_OS_WriteC	bsr	callWRCHV
+		CLV
+		rts
+SWI_OS_ReadC	bsr	callRDCHV
 		CLV
 		rts
 
@@ -395,7 +398,7 @@ SWI_OS_WriteI
 		bra	swi_exit
 
 ;=============================================================================
-; SWI OS_ReadLine
+; SWI OS_ReadLine - deprecated
 ;=============================================================================
 ; Read a line from the input stream
 ; On entry
@@ -414,18 +417,44 @@ SWI_OS_WriteI
 
 
 SWI_OS_ReadLine
-		move.l 	D4,-(SP)
-		; move flag bits to top of D4
-		andi.l	#$00FFFFFF, D4
-		eor.l	D0,D4
+	move.l	D4,-(A7)
+	; get flags into top of D4
+	move.b	D4,-(A7)
+	move.l	D0,D4
+	move.b	(A7)+,D4
+	bsr	SWI_OS_ReadLine32
+	move.l	(A7)+,D4
+	rts
 
-		andi.l	#$3FFFFFFF,D0
-		eor.l	D0,D4
+;=============================================================================
+; SWI OS_ReadLine32 
+;=============================================================================
+; Read a line from the input stream
+; On entry
+; D0	R0 = pointer to buffer to hold the line (bits 0-29), and flags (bits 30-31)
+; 		bit 31 set => echo only those characters that enter the buffer
+; 		bit 30 set => echo characters by echoing the character in R4
+; D1	R1 = size of buffer
+; D2	R2 = lowest ASCII value to pass
+; D3	R3 = highest ASCII value to pass
+; D4	R4 = character to echo if bit 30 of R0 is set
+; On exit
+; D0	R0 corrupted
+; D1	R1 = length of buffer read, not including Return.
+; D2,D3	R2, R3 corrupted
+; 	the C flag is set if input is terminated by an escape condition
 
-		moveq.l	#0,D1
-		move.l	(SP)+,D4
-		rts		
 
+SWI_OS_ReadLine32
+		movem.l	A0/A1,-(A7)
+		move.l 	D0,-(A7)
+		andi.l  #$0FFFFFFF, D0
+		move.l	D0, A0
+		move.l	(A7)+,D0
+
+
+;;;;		movem.l (A7)+,A0/A1
+;;;;		rts		
 
 ;; 6809 ;;mos_OSWORD_0_read_line						; LE902
 ;; 6809 ;;		ldb	#$04
@@ -436,8 +465,8 @@ SWI_OS_ReadLine
 ;; 6809 ;;		cmpb	#$02				;until Y=1
 ;; 6809 ;;		bhs	1B				;
 ;; 6809 ;;		ldy	,X				;get address of input buffer
-;; 6809 ;;		clr	sysvar_SCREENLINES_SINCE_PAGE	;Y=0 store in print line counter for paged mode
-;; 6809 ;;		CLI					;allow interrupts
+		clr.b	sysvar_SCREENLINES_SINCE_PAGE		;Y=0 store in print line counter for paged mode
+		bsr	SWI_OS_IntOn				;allow interrupts
 ;; 6809 ;;		clrb					;zero counter
 ;; 6809 ;;		bra	OSWORD_0_read_line_loop_read				;Jump to E924
 ;; 6809 ;;

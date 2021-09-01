@@ -8,6 +8,11 @@
 
 		xdef 	mos_VDU_init
 		xdef	mos_VDU_WRCH
+		xdef	x_crtc_set_cursor
+		xdef	x_crtc_reset_cursor
+		xdef	mos_VDU_9
+		xdef	x_setup_read_cursor
+		xdef	x_setup_write_cursor
 
 mostbl_chardefs := font
 
@@ -97,7 +102,7 @@ mostbl_vdu_entry_points
 		VDU_JMP_REL	mos_VDU_127
 
 mos_vdu_callfb	move.w	vduvar_VDU_VEC_JMP,D1
-mos_vdu_jmp	jmp	(PC,D1)
+mos_vdu_jmp	jmp	(PC,D1.w)
 
 mostbl_vdu_q_lengths	; 2's complement
 		dc.b	$00,$FF,$00,$00,$00,$00,$00,$00	; 0-7
@@ -186,7 +191,7 @@ mos_VDU_WRCH						; LC4C0
 		btst	#VDU_STATUS_B6_CURSORED,zp_vdu_status
 		beq	mos_VDU_WRCH_sk_nocurs		;
 		bsr	x_start_curs_edit		; if cursor editing enabled two cursors exist
-		bsr	x_set_up_write_cursor		; swap values
+		bsr	x_setup_write_cursor		; swap values
 		bmi	mos_VDU_WRCH_sk_nocurs		; then set up write cursor
 		cmp.b	#$0D,D0				; if display disabled C4D8
 		bne	mos_VDU_WRCH_sk_nocurs		; else if character in A=RETURN teminate edit
@@ -241,7 +246,7 @@ mos_VDU_WRCH_add_to_Q
 		rts					;	C525
 ; ----------------------------------------------------------------------------
 LC526		bsr	x_start_curs_edit		;	C526
-		bsr	x_set_up_write_cursor		;	C529
+		bsr	x_setup_write_cursor		;	C529
 		bsr	mos_vdu_callfb
 LC52F		bsr	x_cursor_editing_routines	;	C52F
 LC532		CLC
@@ -284,7 +289,7 @@ LC561
 		btst	#VDU_STATUS_B6_CURSORED,zp_vdu_status
 		beq	LC511RTS			;if nmo cursor editing  C511 to exit
 x_cursor_editing_routines
-		bsr	x_start_cursor_edit_qry		;	C565
+		bsr	x_setup_read_cursor		;	C565
 
 x_start_curs_edit					;LC568
 		move.w	SR,-(SP)
@@ -1241,7 +1246,7 @@ GetTopScanLineAddr
 
 ;; ----------------------------------------------------------------------------
 ;; set up write cursor
-x_set_up_write_cursor
+x_setup_write_cursor
 		move.w	SR,-(SP)
 		movem.l D0/D1/A0,-(SP)
 		bsr	GetTopScanLineAddr
@@ -1252,7 +1257,7 @@ x_set_up_write_cursor
 x_cur_exit	movem.l	(SP)+,D0/D1/A0
 		rtr
 ;; ----------------------------------------------------------------------------
-x_start_cursor_edit_qry	
+x_setup_read_cursor	
 		move.w	SR,-(SP)
 		movem.l D0/D1/A0,-(SP)
 		bsr	GetTopScanLineAddr
@@ -1629,7 +1634,8 @@ LD017rts	rts
 
 ;; ----------------------------------------------------------------------------
 render_char_16colour
-		movem.w	D4/D5,-(SP)
+		move.w	D4,-(SP)
+		move.w	D5,-(SP)
 		clr.w	D5
 		lea.l	mostbl_byte_mask_16col,A2
 rc16csk1	move.w	#3,D4				; set bit above bitmask for loop counter
@@ -1645,7 +1651,8 @@ LD023		rol.b	#2,D2
 		dbf	D4,LD023
 LD018		sub.b	#$21,D3
 		bpl	rc16csk1			;	D01B
-		movem.w	(SP)+,D4/D5
+		move.w	(SP)+,D5
+		move.w  (SP)+,D4
 		rts
 
 ;API68 - returns address in A1
@@ -1753,7 +1760,8 @@ mostbl_GCOL_options_proc
 * was plot mode in Y, colour in X
 x_set_gra_masks_newAPI
 		and.w	#$00FF,D1
-		movem.w	D0/D2,-(SP)
+		move.w	D2,-(SP)
+		move.w	D0,-(SP)
 		or.b	mostbl_GCOL_options_proc(PC,D1),D0
 		move.b	mostbl_GCOL_options_proc+1(PC,D1),D2
 		eor.b	D2,D0
@@ -1817,14 +1825,16 @@ LD103rts
 ;; ----------------------------------------------------------------------------
 
 x_mos_vdu_gra_drawpixel_whole_byte
-		movem.w	D0/D2,-(SP)					; check if needed
+		move.w	D2,-(SP)					; check if needed
+		move.w	D0,-(SP)					; check if needed
 		LDADDRSYS16 zp_vdu_gra_char_cell,D0,A0
 		move.b	(A0,D1),D0					; LD104
 		or.b	zp_vdu_gracolourOR,D0
 		move.b	zp_vdu_gracolourEOR,D2
 		eor.b	D2,D0
 		move.b	D0,(A0,D1)
-		movem.w	(SP)+,D0/D2
+		move.w	(SP)+,D0
+		move.w	(SP)+,D2
 		rts
 
 ;; ----------------------------------------------------------------------------
@@ -2989,14 +2999,14 @@ x_setup_screen_addr_from_intcoords_atX
 LD884		add.w	vduvar_6845_SCREEN_START,D1	;	D884
 		move.w	D1,zp_vdu_gra_char_cell		;	D887
 		move.w	(A0),D0
-		movem.w	D0,-(SP)
+		move.w	D0,-(SP)
 		and.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
 		add.b	vduvar_PIXELS_PER_BYTE_MINUS1,D0
 		and.w	#$00FF,D0
 		lea.l	mostbl_VDU_pix_mask_16colour,A0
 		move.b	-1(A0,D0),zp_vdu_grpixmask
 		cmp.b	#3,vduvar_PIXELS_PER_BYTE_MINUS1;	D8A6		
-		movem.w	(SP)+,D0
+		move.w	(SP)+,D0
 		beq	LD8B2				;	4 pixels per byte
 		bhs	LD8B5				;	8 pixels per byte
 						;	2 pixels per byte
@@ -3029,7 +3039,7 @@ x_cursor_start					; LD8CE
 		or.b	#$40,D0				; set bit 6 to modify last cursor size setting
 		bsr	x_crtc_set_cursor		; change write cursor format
 		move.w	vduvar_TXT_CUR_X,vduvar_TEXT_IN_CUR_X	; set text input cursor from text output cursor
-		bsr	x_start_cursor_edit_qry		; modify character at cursor poistion
+		bsr	x_setup_read_cursor		; modify character at cursor poistion
 		bset	#VDU_STATUS_B1_SCROLLOCK,zp_vdu_status; bit 1 of VDU status is set to bar scrolling
 .s1		bclr	#VDU_STATUS_B6_CURSORED,zp_vdu_status;bit 6 of VDU status =0 
 		move.b	(SP)+,D0			;Pull A
