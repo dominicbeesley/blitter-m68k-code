@@ -116,10 +116,10 @@ swi_exit:	exg	D0,A0				; swap A0,D0 and retain flags
 		bvs	kernel_swi_handle_err_check
 kernok:		exg	D0,A0
 		; now need to get V,C into stacked SR
-		move.w	D0,-(SP)
+		movem.l	D0,-(SP)			; note: needs to be a movem to preserve carry!
 		move.w	SR,D0
-		move.b	D0,3(SP)
-		move.w	(SP)+,D0
+		move.b	D0,5(SP)
+		move.l	(SP)+,D0
 		rte
 
 kernel_swi_handle_err_check:
