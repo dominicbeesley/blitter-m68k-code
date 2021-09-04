@@ -39,7 +39,7 @@ VDU_STATUS_B5_VDU5	:= 5
 VDU_STATUS_B6_CURSORED	:= 6
 VDU_STATUS_B7_SCREENDIS	:= 7
 
-
+zp_BASE					:= $0100
 zp_vdu_grpixmask			:= $01D1	; Graphics pixel mask
 zp_vdu_txtcolourOR			:= $01D2	; Text colour OR mask
 zp_vdu_txtcolourEOR			:= $01D3	; Text colour EOR mask
