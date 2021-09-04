@@ -143,7 +143,7 @@ KEYV_test_shift_ctl
 		cmp.b	zp_mos_keynumlast,D1		;else compare B with last key pressed (set flags)
 LEF42		beq	.sameas				;DB: slight change as 6809 sets Z on STx
 		move.b	D1,zp_mos_keynumlast		;store B in last key pressed
-		bra	LEFE9				;if different from previous (Z clear) then EF4D
+		bra	LEF4A				;if different from previous (Z clear) then EF4D
 .sameas							;else zero 
 		clr.b	zp_mos_keynumlast		;last key pressed 
 LEF4A		bsr	keyb_set_autorepeat_countdown	;and reset repeat system
@@ -244,7 +244,6 @@ LEFF8		move.b	zp_mos_keynumfirst,D1		;get &ED
 		; note pointer/offset to zp_mos_keynumlast!
 		move.b	#zp_mos_keynumlast & $FF,D2	;get first keypress into Y (DB: last!)
 		bsr	clc_then_mos_OSBYTE_122		;scan keyboard from &10 (osbyte 122)
-		tst.b	D1
 		bmi	LF00C				;if exit is negative goto F00C
 		move.b	zp_mos_keynumlast,zp_mos_keynumfirst
 							;else make last key the
@@ -332,27 +331,28 @@ mos_OSBYTE_121
 							;JMPs via KEYV and hence return from osbyte
 							;however KEYV will return here... 
 
-		movem.l	D3-D4/A0,-(SP)
+		movem.l	D3-D4/A0-A1,-(SP)
 
 
  *************************************************************************
  *        Scan Keyboard C=1, V=0 entry via KEYV (or from CLC above)      *
  *************************************************************************
 
-KEYV_keyboard_scan
+KEYV_keyboard_scan					; LF0D1
+		lea.l	0,A1				; zero page pointer
 		move.w	SR,-(SP)			;push flags
 		tst.b	D1				;if X is +ve goto F0D9		
 		bpl	LF0D9				;		
 		bsr	keyb_check_key_code_API		;else interrogate keyboard
-		move.w	(SP)+,SR
-		bra	keyb_hw_enable_scan2		;if carry set F12E to set Auto scan else : TODO68 - this was BCS check!
+		move.w	(SP)+,SR			;push flags - will return -ve for key pressed
+		bcs	keyb_hw_enable_scan2		;if carry set F12E to set Auto scan else : TODO68 - this was BCS check!
 
 LF0D9		btst	#CC_C_B,1(SP)
 		beq	LF0DE				;if carry clear goto FODE 
 							;else (keep Y passed in to clc_then_mos_OSBYTE_122)
 		move.b	#$EE,D2				;set Y so next operation saves to 2cd
 LF0DE		andi.w	#$00FF,D2
-tbloffs := mosvar_KEYB_TWOKEY_ROLLOVER - (zp_mos_keynumlast & $FF)
+tbloffs := mosvar_KEYB_TWOKEY_ROLLOVER - (zp_mos_keynumlast & $FF)	; $1DF
 		lea	tbloffs,A0
 		move.b	D1,(A0,D2.w)			;can be: 	2cb (mosvar_KEYB_TWOKEY_ROLLOVER)
 							;	,	2cc (+1)
@@ -376,12 +376,14 @@ LF103		;-- TODO68: Check sense of compare!
 		; check for pushed carry
 		btst.b	#CC_C_B,1(SP)
 		bne	LF127				;and if carry set goto F127
+
 		move.b	D0,D4				;else Push A
-		move.b	(A0,D2.w),D3
+		move.b	(A1,D2.w),D3
 		eor.b	D3,D4				;EOR with EC,ED, or EE depending on Y value
 		asl.b	#1,D4				;shift left  
 		cmp.b	#$01,D4				;clear? carry if = or greater than number holds EC,ED,EE			
 		bcc	LF127				;if carry set F127
+
 LF11E		add.b	#$10,D0				;add 16
 		bpl	LF103				;and do it again if 0=<result<128
 
@@ -390,17 +392,18 @@ LF123		dbf	D1,LF0E3			;decrement X
 		move.b	D1,D0				;
 LF127		move.b	D0,D1				;
 		move.w	(SP)+,CCR			;pull flags
-		movem.l	(SP)+,D3-D4/A0
+		movem.l	(SP)+,D3-D4/A0-A1
 keyb_enable_scan_IRQonoff				; LF129
 		bsr	keyb_hw_enable_scan		;call autoscan		
 		CLI					;allow interrupts 
 		SEI					;disable interrupts		
 keyb_hw_enable_scan
+		move.w	SR,-(A7)
 		move.b	#$0B,sheila_SYSVIA_orb
-		rts
+		rtr
 
 keyb_hw_enable_scan2
-		movem.l	(SP)+,D3-D4/A0
+		movem.l	(SP)+,D3-D4/A0-A1
 		bra	keyb_hw_enable_scan
 
 
