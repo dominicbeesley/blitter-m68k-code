@@ -426,6 +426,18 @@ SWI_OS_ReadLine
 	move.l	(A7)+,D4
 	rts
 
+
+;; 6809 ;;mos_OSWORD_0_read_line						; LE902
+;; 6809 ;;		ldb	#$04
+;; 6809 ;;		ldy	#oswksp_OSWORD0_MAX_CH-4
+;; 6809 ;;1		lda	B,X				;transfer bytes 4,3,2 to 2B3-2B5
+;; 6809 ;;		sta	B,Y				;
+;; 6809 ;;		decb					;decrement Y
+;; 6809 ;;		cmpb	#$02				;until Y=1
+;; 6809 ;;		bhs	1B				;
+;; 6809 ;;		ldy	,X				;get address of input buffer
+
+
 ;=============================================================================
 ; SWI OS_ReadLine32 
 ;=============================================================================
@@ -446,100 +458,76 @@ SWI_OS_ReadLine
 
 
 SWI_OS_ReadLine32
-		movem.l	A0/A1,-(A7)
-		move.l 	D0,-(A7)
+		movem.l	D5/A1,-(SP)
 		andi.l  #$0FFFFFFF, D0
-		move.l	D0, A0
-		move.l	(A7)+,D0
-
-
-;;;;		movem.l (A7)+,A0/A1
-;;;;		rts		
-
-;; 6809 ;;mos_OSWORD_0_read_line						; LE902
-;; 6809 ;;		ldb	#$04
-;; 6809 ;;		ldy	#oswksp_OSWORD0_MAX_CH-4
-;; 6809 ;;1		lda	B,X				;transfer bytes 4,3,2 to 2B3-2B5
-;; 6809 ;;		sta	B,Y				;
-;; 6809 ;;		decb					;decrement Y
-;; 6809 ;;		cmpb	#$02				;until Y=1
-;; 6809 ;;		bhs	1B				;
-;; 6809 ;;		ldy	,X				;get address of input buffer
-		clr.b	sysvar_SCREENLINES_SINCE_PAGE		;Y=0 store in print line counter for paged mode
-		bsr	SWI_OS_IntOn				;allow interrupts
-;; 6809 ;;		clrb					;zero counter
-;; 6809 ;;		bra	OSWORD_0_read_line_loop_read				;Jump to E924
-;; 6809 ;;
-;; 6809 ;;OSWORD_0_read_line_loop_bell				; LE91D
-;; 6809 ;;		lda	#$07				;A=7
-;; 6809 ;;OSWORD_0_read_line_loop_inc
-;; 6809 ;;		incb					;increment Y
-;; 6809 ;;		leay	1,Y
-;; 6809 ;;OSWORD_0_read_line_loop_echo				; LE921
-;; 6809 ;;		jsr	OSWRCH				;and call OSWRCH 
-;; 6809 ;;OSWORD_0_read_line_loop_read				; LE924
-;; 6809 ;;		jsr	OSRDCH				;else read character  from input stream
-;; 6809 ;;		bcs	OSWORD_0_read_line_skip_err	;if carry set then illegal character or other error
-;; 6809 ;;							;exit via E972
-;; 6809 ;;	IF CPU_6809
-;; 6809 ;;		pshs	A
-;; 6809 ;;		lda	sysvar_OUTSTREAM_DEST		;A=&27C get output stream *FX3 
-;; 6809 ;;		bita	#2
-;; 6809 ;;		puls	A
-;; 6809 ;;	ELSE
-;; 6809 ;;		tim	#$02, sysvar_OUTSTREAM_DEST
-;; 6809 ;;	ENDIF
-;; 6809 ;;		bne	OSWORD_0_read_line_skip_novdu	;if Carry set E937
-;; 6809 ;;		tst	sysvar_VDU_Q_LEN		;get number of items in VDU queue
-;; 6809 ;;		bne	OSWORD_0_read_line_loop_echo	;if not 0 output character and loop round again
-;; 6809 ;;OSWORD_0_read_line_skip_novdu				; LE937	
-;; 6809 ;;		cmpa	#$7F				;if character is not delete
-;; 6809 ;;		bne	OSWORD_0_read_line_skip_notdel				;goto E942
-;; 6809 ;;		cmpb	#$00				;else is Y=0
-;; 6809 ;;		beq	OSWORD_0_read_line_loop_read	;and goto E924
-;; 6809 ;;		decb					;decrement Y and counter
-;; 6809 ;;		leay	-1,Y				
-;; 6809 ;;		bra	OSWORD_0_read_line_loop_echo	;print backspace
-;; 6809 ;;OSWORD_0_read_line_skip_notdel				; LE942
-;; 6809 ;;		cmpa	#$15				;is it delete line &21
-;; 6809 ;;		bne	OSWORD_0_read_line_skip_not_ctrl_u				;if not E953
-;; 6809 ;;		tstb					;if B=0 we are still reading first
-;; 6809 ;;							;character
-;; 6809 ;;		beq	OSWORD_0_read_line_loop_read	;so E924
-;; 6809 ;;		lda	#$7F				;else output DELETES
-;; 6809 ;;							; LE94B
-;; 6809 ;;1		jsr	OSWRCH				;delete printed chars
-;; 6809 ;;		leay	-1,Y				;decrement pointer
-;; 6809 ;;		decb					;and counter
-;; 6809 ;;		bne	1B				;loop until pointer ==0
-;; 6809 ;;		bra	OSWORD_0_read_line_loop_read	;go back to reading from input stream
-;; 6809 ;;
-;; 6809 ;;OSWORD_0_read_line_skip_not_ctrl_u			; LE953
-;; 6809 ;;		sta	,y				;store character in designated buffer
-;; 6809 ;;		cmpa	#$0D				;is it CR?
-;; 6809 ;;		beq	OSWORD_0_read_line_skip_return	;if so E96C
-;; 6809 ;;		cmpb	oswksp_OSWORD0_LINE_LEN		;else check the line length
-;; 6809 ;;		bhs	OSWORD_0_read_line_loop_bell	;if = or greater loop to ring bell
-;; 6809 ;;		cmpa	oswksp_OSWORD0_MIN_CH		;check minimum character
-;; 6809 ;;		blo	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
-;; 6809 ;;		cmpa	oswksp_OSWORD0_MAX_CH		;check maximum character
-;; 6809 ;;		bhi	OSWORD_0_read_line_loop_echo	;if higher then ignore and don't increment
-;; 6809 ;;		incb
-;; 6809 ;;		leay	1,Y
-;; 6809 ;;		bra	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
-;; 6809 ;;OSWORD_0_read_line_skip_return				; LE96C		
-;; 6809 ;;		jsr	OSNEWL				;output CR/LF   
-;; 6809 ;;		jsr	[NETV]				;call Econet vector
-;; 6809 ;;OSWORD_0_read_line_skip_err				; LE972
-;; 6809 ;;		m_tby
-;; 6809 ;;		lda	zp_mos_ESC_flag			;A=ESCAPE FLAG
-;; 6809 ;;		rola					;put bit 7 into carry 
-;; 6809 ;;		rts					;and exit routine
-;; 6809 ;;
+		move.l	D0,A1
 
 
 
-		move.l	(SP)+,D4
+		clr.b	sysvar_SCREENLINES_SINCE_PAGE	;Y=0 store in print line counter for paged mode
+		bsr	SWI_OS_IntOn			;allow interrupts
+		clr.l	D5				;zero counter
+		bra	OSWORD_0_read_line_loop_read	;Jump to E924
+
+OSWORD_0_read_line_loop_bell				; LE91D
+		moveq	#$07,D0				;A=7
+OSWORD_0_read_line_loop_inc
+		addq.b  #1,D0				;increment Y
+		lea.l	1(A1),A1
+OSWORD_0_read_line_loop_echo				; LE921
+		SWI	OS_WriteC			;and call OSWRCH 
+OSWORD_0_read_line_loop_read				; LE924
+		SWI	OS_ReadC			;else read character  from input stream
+		bcs	OSWORD_0_read_line_skip_err	;if carry set then illegal character or other error
+		btst.b	#$02, sysvar_OUTSTREAM_DEST
+		bne	OSWORD_0_read_line_skip_novdu	;if Carry set E937
+		tst.b	sysvar_VDU_Q_LEN		;get number of items in VDU queue
+		bne	OSWORD_0_read_line_loop_echo	;if not 0 output character and loop round again
+
+OSWORD_0_read_line_skip_novdu				; LE937	
+		cmp.b	#$7F,D0				;if character is not delete
+		bne	OSWORD_0_read_line_skip_notdel	;goto E942
+		tst.l	D5				;else is Y=0
+		beq	OSWORD_0_read_line_loop_read	;and goto E924
+		subq.l	#1,D5				;decrement Y and counter
+		lea	-1(A1),A1				
+		bra	OSWORD_0_read_line_loop_echo	;print backspace
+OSWORD_0_read_line_skip_notdel				; LE942
+		cmp.b	#$15,D0,				;is it delete line &21
+		bne	OSWORD_0_read_line_skip_not_ctrl_u				;if not E953
+		tst.l	D5				;if B=0 we are still reading first
+							;character
+		beq	OSWORD_0_read_line_loop_read	;so E924
+		move.b	#$7F,D0				;else output DELETES
+							; LE94B
+.cllp		SWI	OS_WriteC			;delete printed chars
+		lea	-1(A1),A1			;decrement pointer
+		subq.l	#1,D5				;and counter
+		bne	.cllp				;loop until pointer ==0
+		bra	OSWORD_0_read_line_loop_read	;go back to reading from input stream
+
+OSWORD_0_read_line_skip_not_ctrl_u			; LE953
+		move.b	D0,(A1)				;store character in designated buffer
+		cmp.b	#$0D,D0				;is it CR?
+		beq	OSWORD_0_read_line_skip_return	;if so E96C
+		cmp.l	D1,D5				;else check the line length
+		bhs	OSWORD_0_read_line_loop_bell	;if = or greater loop to ring bell
+		cmp.b	oswksp_OSWORD0_MIN_CH,D0	;check minimum character
+		blo	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
+		cmp.b	oswksp_OSWORD0_MAX_CH,D0	;check maximum character
+		bhi	OSWORD_0_read_line_loop_echo	;if higher then ignore and don't increment
+		addq	#1,D5
+		lea	1(A1),A1
+		bra	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
+OSWORD_0_read_line_skip_return				; LE96C		
+		SWI	OS_NewLine			;output CR/LF   
+		bsr	callNETV			;call Econet vector
+OSWORD_0_read_line_skip_err				; LE972
+		move.l	D5,D1
+		move.b	zp_mos_ESC_flag,D0		;A=ESCAPE FLAG
+		rol.b	D0				;put bit 7 into carry 
+
+		movem.l	(SP)+,D5/A1
 		rts			
 
 

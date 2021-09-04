@@ -78,16 +78,14 @@
 
 kernel_go_todo
 
-		TRACE
 
-
-.readclp
-		SWI	OS_ReadC
-		bcs	.skesc
-		SWI	OS_WriteC
-		bra	.readclp
-.skesc
-
+;;;.readclp
+;;;		SWI	OS_ReadC
+;;;		bcs	.skesc
+;;;		SWI	OS_WriteC
+;;;		bra	.readclp
+;;;.skesc
+;;;
 		; test Enter/Leave OS
 
 
@@ -108,12 +106,26 @@ kernel_go_todo
 ;;		move.b  D0,(A1)
 ;;
 ;;
-;;		move.l	#$C0000700, D0
-;;		move.l	#$100, D1
-;;		moveq.l #' ', D2
-;;		moveq.l #$7F, D3
-;;		moveq.l #'#', D4
-;;		SWI	XOS_ReadLine
+		move.l	#$00000700, D0
+		move.l	#$100, D1
+		moveq.l #' ', D2
+		moveq.l #$7F, D3
+		moveq.l #'#', D4
+		SWI	XOS_ReadLine32
+
+
+		lea.l   $700,A1
+		clr.b	(A1,D1.l)
+
+		moveq	#9,D1
+.lllp		move.l	A1,D0
+		SWI	OS_Write0
+		SWI	OS_NewLine
+		dbf	D1,.lllp
+
+
+		SWI	OS_ReadC
+
 ;;
 ;;		lea.l	$700, A0
 ;;		clr.b	(A0,D1)
@@ -557,7 +569,7 @@ callNETV
 		move.l	(NETV),-(SP)
 		rts
 callBRKV
-		move.l	(NETV),-(SP)
+		move.l	(BRKV),-(SP)
 		rts
 
 
@@ -639,8 +651,8 @@ str_trap_F:	dc.b	"trap_F",0
 
 
 
-
-
+		xdef NETV_dummy
+NETV_dummy	rts
 
 
 

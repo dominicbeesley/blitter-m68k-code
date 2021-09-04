@@ -70,7 +70,7 @@ mostbl_vdu_entry_points
 		VDU_JMP_REL	mos_VDU_4			; VDU 4
 		VDU_JMP_REL	mos_VDU_5			; VDU 5
 		VDU_JMP_REL	LC511RTS			; VDU 6
-		VDU_JMP_REL	LC511RTS;mos_VDU_7			; VDU 7
+		VDU_JMP_REL	mos_VDU_7			; VDU 7
 
 		VDU_JMP_REL	LC511RTS;mos_VDU_8			; VDU 8
 		VDU_JMP_REL	mos_VDU_9			; VDU 9
@@ -3132,3 +3132,26 @@ mos_OSBYTE_118
 mos_OSBYTE_20
 		; TODO - not sure where to store expoded chars and whether to pre-reserve memory
 		rts
+
+;; ----------------------------------------------------------------------------
+;; set up sound data for Bell
+mos_VDU_7					; LE86F
+		DEBUG_INFO "VDU 7"
+		rts
+;;		pshs	CC				;push P
+;;		SEI					;bar interrupts
+;;		ldb	sysvar_BELL_CH			;get bell channel number in A
+;;		andb	#$07				; (bits 0-3 only set)
+;;		orb	#$04				;set bit 2
+;;		clra					;X=A = bell channel number +4=buffer number
+;;		tfr	D,X
+;;		lda	sysvar_BELL_ENV			;get bell amplitude/envelope number
+;;		jsr	[INSV]				;store it in buffer pointed to by X
+;;		lda	sysvar_BELL_DUR			;get bell duration
+;;		sta	,-S
+;;		lda	sysvar_BELL_FREQ		;get bell frequency
+;;		sta	,-S
+;;LE887		SEC
+;;		ror	snd_q_occupied-4,x		;and pass into bit 7 to warn that channel is active
+;;		bra	snd_insv2bytesfromstack
+
