@@ -339,7 +339,7 @@ mos_OSBYTE_121
  *************************************************************************
 
 KEYV_keyboard_scan					; LF0D1
-		lea.l	0,A1				; zero page pointer
+		lea.l	zp_BASE,A1			; zero page pointer
 		move.w	SR,-(SP)			;push flags
 		tst.b	D1				;if X is +ve goto F0D9		
 		bpl	LF0D9				;		
@@ -697,8 +697,9 @@ OSBYTE_129_timed
 			bra	LDEC7				; goto DEC7
 ;; RDCHV entry point	  read a character
 mos_RDCHV_default_entry
-	 		move.b	#0, zp_mos_OS_wksp		; signal we entered through RDCHV not OSBYTE 129
+	 		clr.b	zp_mos_OS_wksp			; signal we entered through RDCHV not OSBYTE 129
 LDEC7								
+			movem.l	D1-D2/A0,-(SP)
 		;TODO: EXEC
 ;; 6809 ;; 		pshs	B,X,Y				; store X and Y
 ;; 6809 ;; 		LDY_B	sysvar_EXEC_FILE		; get *EXEC file handle
@@ -726,14 +727,13 @@ LDEE6			tst.b	zp_mos_ESC_flag			; check ESCAPE flag if bit 7 set Escape pressed
 	 		bpl	LDEE6				; if entered through RDCHV keep trying
 	 		tst.w	oswksp_INKEY_CTDOWN		; else check if countdown has expired
 	 		bne	LDEE6				; if it hasn't carry on
-	 		bra	mos_RDCHV_return_CS_restore_A	; else restore A and exit
-mos_RDCHV_return_SEC_ESC				; LDF00
+	 		bra	mos_RDCHV_return_SEC		; else restore A and exit
+mos_RDCHV_return_SEC_ESC					; LDF00
  			move.b	#$1B,D0				; return ESCAPE 			
+mos_RDCHV_return_SEC 			
  			SEC					; set carry
- 			rts
-mos_RDCHV_return_CS_restore_A				;	LDF05	 
- 			move.b	zp_mos_OS_wksp, D0
-mos_RDCHV_char_found	rts				;	LDF03
+mos_RDCHV_char_found	movem.l	(SP)+,D1-D2/A0
+			rts				;	LDF03
  			
 
 
