@@ -240,7 +240,7 @@ READ_MEM
 		move.b	3(A0),D1		; NUMBER OF BYTES TO RETURN
 		move.b	D1,COMBUF+1		; RETURN LENGTH = REQUESTED DATA	
 		beq	GLP90			; JIF NO BYTES TO GET
-		subq	#1,D1
+		subq.w	#1,D1
 *
 *  Read the requested bytes from local memory
 GLP		move.b	(A1)+,(A0)+		; GET BYTE and STORE TO RETURN BUFFER
@@ -265,11 +265,13 @@ WRITE_MEM
 *
 *  Compute number of bytes to write
 		clr.w	D1
-		move.b	COMBUF+1,D1		; NUMBER OF BYTES TO RETURN
-		subq.w	#3,D1			; MINUS PAGE AND ADDRESS and 1 for good luck
+		move.b	COMBUF+1,D1		; NUMBER OF BYTES TO WRITE+3
+		subq.w	#4,D1			; MINUS PAGE AND ADDRESS and 1 for good luck
 		bmi	WLP50			; JIF NO BYTES TO PUT
 
 *
+		lea.l	3(A0),A0		; point at start of data
+
 *  Write the specified bytes to local memory
 		movem.l	D1/A0/A1,-(A7)
 WLP		move.b	(A0)+,(A1)+		; GET BYTE TO WRITE and STORE THE BYTE AT ,Y
@@ -283,7 +285,7 @@ WLP20		cmp.b	(A0)+,(A1)+		; compare
 *
 *  Write succeeded:  return status = 0
 WLP50		clr.b	D0			; RETURN STATUS = 0
-		BRA	SEND_STATUS
+		bra	SEND_STATUS
 *
 *  Write failed:  return status = 1
 WLP80		moveq	#1,D0
