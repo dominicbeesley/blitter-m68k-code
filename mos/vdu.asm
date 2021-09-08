@@ -72,7 +72,7 @@ mostbl_vdu_entry_points
 		VDU_JMP_REL	LC511RTS			; VDU 6
 		VDU_JMP_REL	mos_VDU_7			; VDU 7
 
-		VDU_JMP_REL	LC511RTS;mos_VDU_8			; VDU 8
+		VDU_JMP_REL	mos_VDU_8			; VDU 8
 		VDU_JMP_REL	mos_VDU_9			; VDU 9
 		VDU_JMP_REL	mos_VDU_10			; VDU 10
 		VDU_JMP_REL	mos_VDU_11			; VDU 11
@@ -298,7 +298,7 @@ x_start_curs_edit					;LC568
 		lea.l	vduvar_TEXT_IN_CUR_X,A1			;	C56C
 		bsr	x_exchange_2atY_with_2atX	;	C56E
 		bsr	x_set_up_displayaddress		;	C571
-		move.w	zp_vdu_top_scanline,A0
+		move.w	zp_vdu_top_scanline,D1
 		bsr	x_set_cursor_position_X		;	C574
 		bchg	#VDU_STATUS_B1_SCROLLOCK,zp_vdu_status	; toggle scrolling disabled
 		move.w	(SP)+,D0
@@ -357,18 +357,17 @@ mos_VDU_8						; LC5C5
 		cmp.b	vduvar_TXT_WINDOW_LEFT,D1	;	C5D0
 		bmi	x_execute_wraparound_left_up	;	C5D3
 		move.w	vduvar_6845_CURSOR_ADDR,D1	;	C5D5
+		clr.w	D0
 		move.b	vduvar_BYTES_PER_CHAR,D0	;	C5D9
-		asl.w	#8,D0
 		sub.w	D0,D1
 		move.b	vduvar_SCREEN_BOTTOM_HIGH,D0
 		asl.w	#8,D0
-		cmp.b	D0,D1		
+		cmp.b	D0,D1
 		bhs	LC5EA				;	C5E5
 		move.b	vduvar_SCREEN_SIZE_HIGH,D0	;	C5E7		; TODO swap around and use x68_add_screen_size_d0
 		asl.w	#8,D0
 		add.w	D0,D1
-LC5EA		move.w	D1,A0
-		bra	mos_set_cursor_X		;	C5EB
+LC5EA		bra	mos_set_cursor_X		;	C5EB
 ;; ----------------------------------------------------------------------------
 ;; execute wraparound left-up
 x_execute_wraparound_left_up
@@ -439,10 +438,9 @@ mos_VDU_9						; LC664
 		cmp.b	vduvar_TXT_WINDOW_RIGHT,D1	;	C66D
 		bhs	x_text_cursor_down_and_right	;	C670
 		addq.b	#1,vduvar_TXT_CUR_X		;	C672
-		move.w	vduvar_6845_CURSOR_ADDR,A0
 		clr.w	D1
 		move.b	vduvar_BYTES_PER_CHAR,D1	;	C678
-		lea	(A0,D1),A0
+		add.w	vduvar_6845_CURSOR_ADDR,D1
 		bra	mos_set_cursor_X		;	C681
 
 ;; ----------------------------------------------------------------------------
@@ -469,7 +467,7 @@ x_clear_a_line_then_setup_displayaddress_and_cursor_position
 		bsr	x_clear_a_line
 x_setup_displayaddress_and_cursor_position
 		bsr	x_set_up_displayaddress
-		move.w	zp_vdu_top_scanline,A0
+		move.w	zp_vdu_top_scanline,D1
 		bra	x_set_cursor_position_X
 
 ;; graphic cursor right
@@ -528,7 +526,7 @@ mos_VDU_28
 		bsr	x_check_text_cursor_in_window_setup_display_addr
 		bcs	mos_VDU_30
 LC732_set_cursor_position
-		move.w	zp_vdu_top_scanline,A0		; CHECK!
+		move.w	zp_vdu_top_scanline,D1		; CHECK!
 		bra	x_set_cursor_position_X
 
 LC758rts
@@ -864,12 +862,12 @@ x68_add_screen_size_d0
 		add.w	(SP)+,D0
 		rts
 
-x68_sub_screen_size_d0
-		move.w	D1,-(SP)
-		move.b	vduvar_SCREEN_SIZE_HIGH,D1
-		asl.w	#8,D1
-		sub.w	D1,D0
-		move.w	(SP)+,D1
+x68_sub_screen_size_d1
+		move.w	D0,-(SP)
+		move.b	vduvar_SCREEN_SIZE_HIGH,D0
+		asl.w	#8,D0
+		sub.w	D0,D1
+		move.w	(SP)+,D0
 		rts
 
 
@@ -882,12 +880,12 @@ x_adjust_screen_RAM_addresses
 		bsr	x68_add_screen_size_d0
 		bra	LC9B3
 x_adjust_screen_RAM_addresses_one_line_scroll	
-		move.w	vduvar_BYTES_PER_ROW,D0
-		add.w	vduvar_6845_SCREEN_START,D0
+		move.w	vduvar_BYTES_PER_ROW,D1
+		add.w	vduvar_6845_SCREEN_START,D1
 		bpl	LC9B3
-		bsr	x68_sub_screen_size_d0		
-LC9B3		move.w	D0,vduvar_6845_SCREEN_START
-		move.w	D0,A0
+		bsr	x68_sub_screen_size_d1		
+LC9B3		move.w	D1,vduvar_6845_SCREEN_START
+		move.w	D1,D0
 		moveq	#$0C,D1
 		bra	x_set_6845_screenstart_from_X
 
@@ -923,19 +921,16 @@ LC9C1		move.b	D0,(A0,D1)
 		subq.b	#1,vduvar_VDU_Q_END - 4					;
 		bsr	mos_VDU_24						; and do VDU 24
 		bclr	#VDU_STATUS_B3_WINDOW,zp_vdu_status			; clear bit 3 of &D0
-		move.w	vduvar_6845_SCREEN_START,A0				; window area start address lo
+		move.w	vduvar_6845_SCREEN_START,D1				; window area start address lo
 mos_set_cursor_X
-		move.w	A0,vduvar_6845_CURSOR_ADDR				;	C9F6		
+		move.w	D1,vduvar_6845_CURSOR_ADDR				;	C9F6		
 		bpl	x_set_cursor_position_X
-		move	A0,D0
-		bsr	x68_sub_screen_size_d0
-		move	D0,A0
+		bsr	x68_sub_screen_size_d1
 x_set_cursor_position_X
-		move.w	A0,zp_vdu_top_scanline
-		move.w	vduvar_6845_CURSOR_ADDR,A0
+		move.w	D1,zp_vdu_top_scanline
+		move.w	vduvar_6845_CURSOR_ADDR,D0
 		moveq	#$0E,D1
 x_set_6845_screenstart_from_X			; LCA0E
-		move.w	A0,D0
 		cmp.b	#$07,vduvar_MODE
 		bhs	LCA27
 		lsr.w	#3,D0
@@ -1050,7 +1045,7 @@ mos_VDU_127					; LCAAC
 		beq	LCAC2							;if mode 7 CAC2
 		lea.l	mostbl_chardefs(PC),A1
 		;;std	zp_vdu_wksp+4						;store in &DF (&DE) now points to C300 SPACE pattern
-		bsr	LCFBF_renderchar2					;display a space
+		bra	LCFBF_renderchar2					;display a space
 ;; ----------------------------------------------------------------------------
 LCAC2		moveq	#$20,D0				;A=&20
 		bra	x_convert_teletext_characters	;and return to display a space
@@ -1163,21 +1158,19 @@ mos_send6845lp					; LCBB0
 
 LCBC1_clear_whole_screen
 		move.l	D4,-(SP)
-		moveq	#-1,D0				; force bank to FFFF
-		move.b	vduvar_SCREEN_BOTTOM_HIGH,D0
-		asl.w	#8,D0
-		move.w	D0,vduvar_6845_SCREEN_START
-		move.l	D0,A0
-		move.l	D0,-(SP)
+		moveq	#-1,D1				; force bank to FFFF
+		move.b	vduvar_SCREEN_BOTTOM_HIGH,D1
+		asl.w	#8,D1
+		move.w	D1,vduvar_6845_SCREEN_START
+		move.l	D1,A0
 		bsr	mos_set_cursor_X
-		moveq	#$0C,D1
+		moveq	#$0C,D1				; use value calculated in set_cursor
 		bsr	mos_set_6845_regD1toD0_16	;	CBD1
 		clr.w	D0
 		move.b	vduvar_MODE_SIZE,D0		;	CBD7
 		lea	(mostbl_VDU_screensize_h,PC),A1
 		move.b  (A1,D0.w),D0
 		asl.w	#8,D0
-		move.l	(SP)+,A0
 		adda.w	D0,A0				; point at end of screen and clear down
 		lsr.w	#4,D0				; SZ*256/16
 		subq.w	#1,D0
@@ -1328,13 +1321,13 @@ x_execute_upward_scroll								; LCDFF
 		move.b	vduvar_TXT_WINDOW_TOP,vduvar_TXT_CUR_Y			; top of text window
 										; current text line
 		bsr	x_set_up_displayaddress					; set up display address							
-LCE0B		add.w	vduvar_BYTES_PER_ROW,D0
+LCE0B		add.w	vduvar_BYTES_PER_ROW,D1
 		bpl	LCE14							;	CE0E
-		bsr	x68_sub_screen_size_d0					;	CE11
-LCE14		move.w	D0,zp_vdu_wksp						;	CE16
+		bsr	x68_sub_screen_size_d1					;	CE11
+LCE14		move.w	D1,zp_vdu_wksp						;	CE16
 		move	SR,-(SP)
-		lsr	#8,D0
-		move.b	D0,zp_vdu_wksp+2					;	CE18
+		lsr	#8,D1
+		move.b	D1,zp_vdu_wksp+2					;	CE18
 		move	(SP)+,CCR
 		bhs	LCE22							;	CE1A
 LCE1C:		bsr	x_copy_text_line_window_LCE73				;	CE1C
@@ -1502,12 +1495,12 @@ x_set_up_displayaddress
 		move.b	vduvar_BYTES_PER_CHAR,D0
 		clr.w	D1
 		move.b	vduvar_TXT_CUR_X,D1
-		mulu	D1,D0
-		add.w	zp_vdu_top_scanline,D0
-		move.w	D0,vduvar_6845_CURSOR_ADDR
+		mulu	D0,D1
+		add.w	zp_vdu_top_scanline,D1
+		move.w	D1,vduvar_6845_CURSOR_ADDR
 		bpl	.s1
-		bsr	x68_sub_screen_size_d0
-.s1		move.w	D0,zp_vdu_top_scanline
+		bsr	x68_sub_screen_size_d1
+.s1		move.w	D1,zp_vdu_top_scanline
 		rts
 
 ; 68API - changed to expect A1 register to contain pointer to character bitmap?

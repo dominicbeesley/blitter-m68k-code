@@ -277,6 +277,8 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		DEBUG_INFO "VDU init"
 		
 		move.b	sysvar_STARTUP_OPT,D0			; init vdu
+
+		TRACE
 		bsr	mos_VDU_init
 
 
