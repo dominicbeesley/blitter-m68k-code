@@ -163,8 +163,8 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 28
 		dc.w	SWI_UKSwi-*			; 29
 		dc.w	SWI_UKSwi-*			; 2A
-		dc.w	SWI_UKSwi-*			; 2B
-		dc.w	SWI_OS_GenerateError-*		; 2C
+		dc.w	SWI_OS_GenerateError-*		; 2B
+		dc.w	SWI_UKSwi-*			; 2C
 		dc.w	SWI_UKSwi-*			; 2D
 		dc.w	SWI_UKSwi-*			; 2E
 		dc.w	SWI_UKSwi-*			; 2F

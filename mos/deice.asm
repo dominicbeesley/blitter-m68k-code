@@ -1,6 +1,7 @@
 		xdef		deice_init
 		xdef		deice_enter
 		xdef		deice_print
+		xdef		deice_print_space
 		xdef		deice_print_str
 
 		include		"hardware.inc"
@@ -31,7 +32,8 @@ deice_print_str
 		move.l  D0,8(A7)
 		movem.l (A7)+,D0/A0
 		rts
-
+deice_print_space
+		move.b	#' ',D0
 deice_print
 		movem.l	D0/D4/D5,-(A7)
 		and.b	#$7F,D0

@@ -79,6 +79,13 @@
 kernel_go_todo
 
 
+		trap #0
+		dc.b	23
+		dc.b	"BobbleChops"
+		dc.b	0
+		align	1
+
+
 ;;;.readclp
 ;;;		SWI	OS_ReadC
 ;;;		bcs	.skesc
@@ -318,6 +325,15 @@ handle_int_DEBUG:
 
 ;;TODO: Keep this or insist on call SWI_OS_GenerateError?
 handle_trap_0:
+
+		movem.l	D0-D7/A0-A6,-(A7)
+		lea	(str_trap_0,PC),A0
+		bsr	intmsg_nostop		
+		movem.l	(A7)+,D0-D7/A0-A6
+
+		move.l  2(SP),D0		
+
+
 		; TODO restore user mode before call OS_GenerateError?
 		move.l	#OS_GenerateError, A0
 		bra	kernel_swi_handle
@@ -329,17 +345,22 @@ mos_DEFAULT_BRK_HANDLER:
 		; TODO reset stack?
 		move.w  (A7)+,D0
 		bsr	d_PrHex_w
-		move.b	#' ',D0
-		bsr	deice_print
+		bsr	deice_print_space
 		move.l	(A7)+,D0
 		bsr	d_PrHex_l
-		move.b	#' ',D0
-		bsr	deice_print
+		bsr	deice_print_space
+
+		move.b	(A0)+,D0
+		bsr	d_PrHex_b
+
+		bsr	deice_print_space
+
 .lp		move.b	(A0)+,D0
 		beq	.s1
 		bsr	deice_print
 		bra	.lp
-.s1		stop	#$0
+.s1		stop	#$2000
+		bra	.s1
 
 
 handle_trap_1:
@@ -439,7 +460,12 @@ intmsg_bus:
 		bra	bussk2
 
 intmsg
-		bsr	PrString
+		bsr	intmsg_nostop
+
+.there		stop	#$2700
+		bra	.there
+
+intmsg_nostop	bsr	PrString
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -457,16 +483,15 @@ intmsg_lp0:
 		bsr	deice_print
 		moveq	#'=',D0
 		bsr	deice_print
-		moveq	#' ',D0
-		bsr	deice_print
 
-		move.l	0(A7),D0
+		bsr	deice_print_space
+
+		move.l	4(A7,D3.w),D0
 		bsr	d_PrHex_l
 
-		moveq	#' ',D0
-		bsr	deice_print
-		bsr	deice_print
-		bsr	deice_print
+		bsr	deice_print_space
+		bsr	deice_print_space
+		bsr	deice_print_space
 		moveq	#'A',D0
 		bsr	deice_print
 		move.b	D2,D0
@@ -476,10 +501,10 @@ intmsg_lp0:
 		beq	.done
 		moveq	#'=',D0
 		bsr	deice_print
-		moveq	#' ',D0
-		bsr	deice_print
 
-		move.l	32(A7,D3.w),D0
+		bsr	deice_print_space
+
+		move.l	36(A7,D3.w),D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -497,7 +522,7 @@ intmsg_lp0:
 
 		move	A7,D0
 		add.l	D4,D0
-		add.l	#64,D0
+		add.l	#70,D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -525,10 +550,10 @@ intmsg_lp0:
 		bsr	deice_print
 		moveq	#'=',D0
 		bsr	deice_print
-		moveq	#' ',D0
-		bsr	deice_print
 
-		move.l	62(A7,D4.w),D0
+		bsr	deice_print_space
+
+		move.l	66(A7,D4.w),D0
 		bsr	d_PrHex_l
 
 		moveq	#13,D0
@@ -538,19 +563,15 @@ intmsg_lp0:
 		bsr	deice_print
 		moveq	#'=',D0
 		bsr	deice_print
-		moveq	#' ',D0
-		bsr	deice_print
-		bsr	deice_print
 
-		move.w	60(A7,D4.w),D0
+		bsr	deice_print_space
+		bsr	deice_print_space
+
+		move.w	64(A7,D4.w),D0
 		bsr	d_PrHex_w
 
 		moveq	#13,D0
-		bsr	deice_print
-
-.there		stop	#$2700
-		bra	.there
-
+		bra	deice_print
 
 
 mos_WRCH_default_entry
@@ -652,7 +673,7 @@ str_trap_F:	dc.b	"trap_F",0
 
 
 
-
+		align	1
 		xdef NETV_dummy
 NETV_dummy	rts
 
