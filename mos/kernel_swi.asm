@@ -24,21 +24,8 @@
 ********************************************************************************
 * SWI dispatch and handling                                                    *
 *                                                                              *
-;;;* SWIs are emulated using TRAPS#1 and #2, #1 is a shortcut for the longer      *
-;;;* #2 form with but uses fewer bytes in the program as the SWI number is        *
-;;;* encoded in fewer (16 bits) instead of 24                                     *
-;;;*                                                                              *
-;;;* TRAP #2                                                                      *
-;;;* dc.l 24 bit SWI number (in 32bit field)                                      *
-;;;*                                                                              *
-;;;* TRAP #1                                                                      *
-;;;* dc.w 16 bit SWI number (encoded bit 15=X flag, 14..0 as SWI no)              *
-;;;*                                                                              *
-;;;* All SWI parameters are passed in D0..D7                                      *
-;;;* All Address register should be preserved                                     *
-;;;*                                                                              *
-* SWIs are handled via Trap 12 with the SWI number in A0 (as per CiscOS)       *
-*                                                                              *
+* SWIs are emulated using TRAP #12 with SWI number in A0 and ARM registers     *
+* mapped as at http://beebwiki.mdfs.net/68000_Second_Processor                 *
 *                                                                              *
 *                                                                              *
 ********************************************************************************
@@ -47,7 +34,7 @@ kernel_swi_handle
 
 	;STACK:
 	;+-----+---+----------------------------------------+
-	;| +2  | l | Original PC (points at SWI number WORD |
+	;| +2  | l | Original PC 			    |
 	;+-----+---+----------------------------------------+
 	;| +0  | w | Original SR                            |
 	;+-----+---+----------------------------------------+
@@ -58,7 +45,7 @@ kernel_swi_handle
 		move.l  A0,D0
 	;STACK:
 	;+-----+---+----------------------------------------+
-	;| +10 | l | Original PC (points at SWI number WORD |
+	;| +10 | l | Original PC                            |
 	;+-----+---+----------------------------------------+
 	;| +8  | w | Original SR                            |
 	;+-----+---+----------------------------------------+
@@ -67,9 +54,11 @@ kernel_swi_handle
 	;| +0  | l | Original D0                            |
 	;+-----+---+----------------------------------------+
 	; A0 = original SWI number
-	; D0 = SWI Number masked
 
 		and.l	#$00FDFFFF, D0			; mask off X and trim to 24 bits
+
+	; D0 = SWI Number masked
+
 		cmp.l	#SWI_TABLE_LOW_COUNT,D0
 		blo	low_swi
 		cmp.l	#256, D0
@@ -82,7 +71,7 @@ low_swi:	asl.l	#1,D0
 
 	;STACK:
 	;+-----+---+----------------------------------------+
-	;| +10 | l | Original PC (points at SWI number WORD |
+	;| +10 | l | Original PC                            |
 	;+-----+---+----------------------------------------+
 	;| +8  | w | Original SR                            |
 	;+-----+---+----------------------------------------+
@@ -102,7 +91,7 @@ low_swi:	asl.l	#1,D0
 
 	;STACK:
 	;+-----+---+----------------------------------------+
-	;| +6  | l | Original PC (points at SWI number WORD |
+	;| +6  | l | Original PC 			    |
 	;+-----+---+----------------------------------------+
 	;| +4  | w | Original SR                            |
 	;+-----+---+----------------------------------------+
@@ -127,7 +116,6 @@ kernel_swi_handle_err_check:
 		bne	kernok				; X bit is set, return with VS	
 
 		; an error has occurred and X was not set, generate an error
-		lea.l	10(SP),SP
 		bra	callBRKV
 
 
@@ -512,9 +500,9 @@ OSWORD_0_read_line_skip_not_ctrl_u			; LE953
 		beq	OSWORD_0_read_line_skip_return	;if so E96C
 		cmp.l	D1,D5				;else check the line length
 		bhs	OSWORD_0_read_line_loop_bell	;if = or greater loop to ring bell
-		cmp.b	oswksp_OSWORD0_MIN_CH,D0	;check minimum character
+		cmp.b	D2,D0	;check minimum character
 		blo	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
-		cmp.b	oswksp_OSWORD0_MAX_CH,D0	;check maximum character
+		cmp.b	D3,D0	;check maximum character
 		bhi	OSWORD_0_read_line_loop_echo	;if higher then ignore and don't increment
 		addq	#1,D5
 		lea	1(A1),A1

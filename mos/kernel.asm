@@ -319,17 +319,19 @@ handle_int_DEBUG:
 ;;TODO: Keep this or insist on call SWI_OS_GenerateError?
 handle_trap_0:
 		; TODO restore user mode before call OS_GenerateError?
-		lea.l	2(SP),SP
-		move.l	(SP),D0
-		SWI	OS_GenerateError
+		move.l	#OS_GenerateError, A0
+		bra	kernel_swi_handle
 
 		
 
 mos_DEFAULT_BRK_HANDLER:
 
 		; TODO reset stack?
-
-		move.l	(A0)+,D0
+		move.w  (A7)+,D0
+		bsr	d_PrHex_w
+		move.b	#' ',D0
+		bsr	deice_print
+		move.l	(A7)+,D0
 		bsr	d_PrHex_l
 		move.b	#' ',D0
 		bsr	deice_print
