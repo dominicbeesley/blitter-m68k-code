@@ -63,6 +63,10 @@ while (my $fn = shift) {
 			my $addr = hex($area) + hex($offs);
 
 			printf "DEF %s 0x%08X\n", $sym, $addr;
+		} elsif ($_ =~ /^(\s+([^:]+):\d+)?\s+\*ABS\*:([0-9A-F]+)\s(\w+)/i) {
+			my ($sym, $addr) = ($4, $3);
+			$addr = hex($addr);
+			printf "DEF %s 0x%08X\n", $sym, $addr;
 		}
 	}
 
