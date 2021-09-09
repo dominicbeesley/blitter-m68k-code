@@ -60,12 +60,12 @@ while (my $fn = shift) {
 
 			my $area = $areas{"$file:$area"};
 
-			my $addr = hex($area) + hex($offs);
+			my $addr = (hex($area) + hex($offs)) & 0xFFFFFFFF;
 
 			printf "DEF %s 0x%08X\n", $sym, $addr;
 		} elsif ($_ =~ /^(\s+([^:]+):\d+)?\s+\*ABS\*:([0-9A-F]+)\s(\w+)/i) {
 			my ($sym, $addr) = ($4, $3);
-			$addr = hex($addr);
+			$addr = hex($addr) & 0xFFFFFFFF;
 			printf "DEF %s 0x%08X\n", $sym, $addr;
 		}
 	}
