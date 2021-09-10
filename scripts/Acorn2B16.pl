@@ -414,6 +414,12 @@ sub convert16($$) {
 					if (ord($c) == 0xF4) {
 						$ret .= $buf;
 						last;
+					} elsif ($key eq "PROC" || $key eq "FN") {
+						$ret .= chr(255);
+						if (length($ret) & 0x01) {
+							$ret .= ".";
+						}
+						$ret .= chr(0) x 6;
 					}
 				}
 
@@ -440,7 +446,7 @@ sub convert16($$) {
 
 	}
 
-	if ($STATE_NORMAL) {
+	if ($state == STATE_NORMAL) {
 		$ret .= checkfortokens($kept);
 	} elsif ($state == STATE_LITERAL) {
 		print STDERR "Unterminated string constant\n";
