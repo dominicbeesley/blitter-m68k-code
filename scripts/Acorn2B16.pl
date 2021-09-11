@@ -369,7 +369,7 @@ sub convert16($$) {
 
 	while (length($buf)) {
 		my $c = substr($buf, 0, 1);
-		printf "C=>%02X [%d]", ord($c), $state;
+		#printf "C=>%02X [%d]", ord($c), $state;
 		$buf = substr($buf, 1);
 
 		if ($state == STATE_NORMAL) {
@@ -432,13 +432,11 @@ sub convert16($$) {
 				$kept .= $c;
 			}
 		} elsif ($state == STATE_LITERAL) {
-			print "\"$c";
 			$kept .= $c;
 			if ($c eq "\"") {
 				$ret .= $kept;
 				$kept = "";
 				$state = STATE_NORMAL;
-				print "POP";
 			}
 		} else {
 			die "BAD STATE $state;"
@@ -459,5 +457,14 @@ sub convert16($$) {
 
 sub checkfortokens($) {
 	my ($buf) = @_;
+	my $i = 0;
+	while ($i < length($buf)) {
+		for my $k (keys %b16keys) {
+			if ($k eq substr($buf, $i, length($k))) {
+				$buf = substr($buf, 0, $i) . chr($b16keys{$k}) . substr($buf, $i+length($k));
+			}
+		}
+		$i++;
+	}
 	return $buf;
 }
