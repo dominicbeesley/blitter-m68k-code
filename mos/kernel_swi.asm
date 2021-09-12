@@ -115,6 +115,7 @@ kernel_swi_handle_err_check:
 		btst	#17, D0
 		bne	kernok				; X bit is set, return with VS	
 
+		exg.l	A0, D0
 		; an error has occurred and X was not set, generate an error
 		bra	callBRKV
 
@@ -126,7 +127,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_OS_NewLine-*		; 03
 		dc.w	SWI_OS_ReadC-*			; 04
 		dc.w	SWI_NOWT-*			; 05
-		dc.w	SWI_NOWT-*			; 06
+		dc.w	SWI_OS_Byte-*			; 06
 		dc.w	SWI_OS_Word-*			; 07
 		dc.w	SWI_UKSwi-*			; 08
 		dc.w	SWI_UKSwi-*			; 09
@@ -170,7 +171,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 2F
 
 
-		dc.w	SWI_UKSwi-*			; 30
+		dc.w	SWI_NOWT-*			; 30
 		dc.w	SWI_UKSwi-*			; 31
 		dc.w	SWI_UKSwi-*			; 32
 		dc.w	SWI_UKSwi-*			; 33
@@ -519,40 +520,11 @@ OSWORD_0_read_line_skip_err				; LE972
 		rts			
 
 SWI_OS_Word:
-	move.l	D0,-(A7)
+		move.l	(WORDV),-(A7)
+		rts
 
-	cmp.w	#8,D0
-	bhs	.toobig
-
-	asl.w	#1,D0
-	move.w	tblOSWORDS(PC,D0.W),D0
-	jsr	tblOSWORDS(PC,D0.w)
-
-.toobig:
-	movem.l (A7)+,D0
-	rts
+SWI_OS_Byte:
+		move.l	(BYTEV),-(A7)
+		rts
 
 
-tblOSWORDS:
-	dc.w	OSWORD_RTS-tblOSWORDS		; 0
-	dc.w	OSWORD_1_READ_TIME-tblOSWORDS	; 1
-	dc.w	OSWORD_RTS-tblOSWORDS		; 2
-	dc.w	OSWORD_RTS-tblOSWORDS		; 3
-	dc.w	OSWORD_RTS-tblOSWORDS		; 4
-	dc.w	OSWORD_RTS-tblOSWORDS		; 5
-	dc.w	OSWORD_RTS-tblOSWORDS		; 6
-	dc.w	OSWORD_RTS-tblOSWORDS		; 7
-
-OSWORD_1_READ_TIME:
-	movem.l	D1/A1,-(A7)
-	moveq	#4,D0
-	move.l	D1,A0
-	lea	oswksp_TIME,A1
-	move.b	sysvar_TIMER_SWITCH,D1
-	ext.w	D1
-	lea	(A1,D1.w),A1
-.lp	move.b	-(A1),(A0)+
-	dbf	D0,.lp
-	movem.l	(A7)+,D1/A1
-OSWORD_RTS:
-	rts

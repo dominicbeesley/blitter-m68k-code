@@ -108,33 +108,6 @@ FSCV_6_NewFS				:=	$06
 
 ; OS Vectors
 
-VECTOR_START				:=	$0400
-VECTOR_END				:=	$0460
-USERV					:=	$0400	; User vector, called by *LINE, *CODE, OSWORD >=&E0
-BRKV					:=	$0404	; The BRK vector
-IRQ1V					:=	$0408	; Main interrupt vector
-IRQ2V					:=	$040C	; Secondary interrupt vector
-CLIV					:=	$0410	; Command Line Interpreter vector
-BYTEV					:=	$0414	; OSBYTE (*FX) calls
-WORDV					:=	$0418	; OSWORD calls
-WRCHV					:=	$041C	; Send character to current output stream
-RDCHV					:=	$0420	; Wait for a character from current input stream
-FILEV					:=	$0424	; Operate on a whole file, eg loading/saving/delete/etc
-ARGSV					:=	$0428	; Read/Write arguments on an open file
-BGETV					:=	$042C	; Read a byte from an open file
-BPUTV					:=	$0430	; Write a byte to an open file
-GBPBV					:=	$0434	; Read/Write block of data from/to open file or device
-FINDV					:=	$0438	; Open or close a file
-FSCV					:=	$043C	; Various filing system control calls
-EVNTV					:=	$0440	; Event handler
-UPTV					:=	$0444	; User Print vector
-NETV					:=	$0448	; Network Print vector
-VDUV					:=	$044C	; Unrecognised VDU commands
-KEYV					:=	$0450	; Read the keyboard
-INSV					:=	$0454	; Insert characters into a buffer
-REMV					:=	$0458	; Remove characters from a buffer
-CNPV					:=	$045C	; Count or Purge a buffer
-
 
 OSBYTE_13_ENABLE_EVENT			:=	13
 OSBYTE_14_ENABLE_EVENT			:=	14

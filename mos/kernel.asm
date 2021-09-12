@@ -73,141 +73,73 @@
 		xdef		mos_OSBYTE_125
 		xdef		mos_OSBYTE_124
 
+		xdef 		SWI_OS_Word_Handle
+		xdef 		SWI_OS_Byte_Handle
+
+
 		SECTION "code"
 
 
 kernel_go_todo
 
+		;TODO: this is a bit simplistic
+		;enter user mode set up a stack and then enable interrupts and change mode
+		andi.w	#$80FF, SR
+		move.l	#$00008000, A7
 
-		trap #0
-		dc.b	23
-		dc.b	"BobbleChops"
-		dc.b	0
-		align	1
+		; do a simple *GOS prompt
 
+kernel_go_loop
+		MOVE.B	#'*', D0			; * Prompt
+		SWI	OS_WriteC
 
-;;;.readclp
-;;;		SWI	OS_ReadC
-;;;		bcs	.skesc
-;;;		SWI	OS_WriteC
-;;;		bra	.readclp
-;;;.skesc
-;;;
-		; test Enter/Leave OS
+		MOVE.L	#STR_BUF, D0			; Buffer address
+		MOVE.B	#$FF, D1			; Maximum line length is 255
+		MOVE.B	#$20, D2			; Minimum acceptable ASCII value
+		MOVE.B	#$FF, D3			; Maximum acceptable ASCII value
+		CLR.L	D4				; Flags
+		SWI	OS_ReadLine32			; SWI OS_ReadLine32: Read line from input
+		BCS	escape				; Jump if user pressed ESCAPE
 
+		MOVE.L	#STR_BUF, D0			; D0 points to the line read by the OS_ReadLine32 call
+		SWI	OS_CLI, A0			; SWI OS_CLI: Process command
+		BRA	kernel_go_loop          	; Loop infinitely
 
-;;		lea.l	0, A0
-;;		lea.l	0, A1
-;;		move.l	#$FFFF0100,(A0)
-;;
-;;		moveq	#4,D1
-;;		clr.b	D2
-;;		SEX
-;;		bra	.tsk	
-;;
-;;
-;;.tlp		move.b  D0,(A1)+
-;;.tsk		move.b	(A0)+,D0
-;;		addx.b	D2,D0
-;;		dbcc	D1,.tlp
-;;		move.b  D0,(A1)
-;;
-;;
-		move.l	#$00000700, D0
-		move.l	#$100, D1
-		moveq.l #' ', D2
-		moveq.l #$7F, D3
-		moveq.l #'#', D4
-		SWI	XOS_ReadLine32
+escape
+		MOVEQ	#OSBYTE_126_ESCAPE_ACK, D0	; OSBYTE $7E: Acknowledge detection of an ESCAPE condition
+		SWI	OS_Byte
+		MOVE.L	#err_escape, D0			; Point D0 to the ESCAPE error message
+		SWI	OS_GenerateError
+		BRA	kernel_go_loop                  ; This command should never be reached
 
 
-		lea.l   $700,A1
-		clr.b	(A1,D1.l)
 
-		moveq	#9,D1
-.lllp		move.l	A1,D0
+mos_DEFAULT_BRK_HANDLER:
+
+		exg.l	D0, A1
+		; TODO reset stack?
+		move.w  (A7)+,D0
+		bsr	PrHex_w
+		bsr	PrSpc
+		move.l	(A7)+,D0
+		bsr	PrHex_l
+		bsr	PrSpc
+
+		move.l	(A1)+,D0
+		bsr	PrHex_l
+		bsr	PrSpc
+
+		exg.l	A1,D0
+
 		SWI	OS_Write0
 		SWI	OS_NewLine
-		dbf	D1,.lllp
-
-
-		SWI	OS_ReadC
-
-;;
-;;		lea.l	$700, A0
-;;		clr.b	(A0,D1)
-;;		move.l	A0,D0
-;;		SWI	XOS_Write0
-
-
-
-		XWRITES	"HELLO ISHBEL"
-
-
-		lea.l	$FFFF5000,A0
-		move.w	#$FF,D0
-.lll3		move.b	D0,(A0)+
-		dbf	D0,.lll3
-
-
-		move.w	#99,D1
-		
-		lea.l	test_d,A1
-.lll4		move.l	A1,D0
-		SWI	OS_Write0
-		dbf	D1,.lll4
-
-
-
-
-		moveq	#0,D4
-.lll5		move.l	D4,D0
-		bsr	PrHex_l
-
-		SWI	OS_WriteI+' '
-
-		; time is little-endian, rearrange
-		moveq	#3,D1
-		lea.l	oswksp_TIME,A0
-.llt		rol.l	#8,D0
-		move.b	(A0,D1.W),D0		
-		dbra	D1,.llt
-		bsr	PrHex_l
-
-
 		SWI	OS_NewLine
-
-		SWI	OS_WriteI+17
-		move.b	D4,D0
-		andi.b	#$F,D0
-		SWI	OS_WriteC
-
-		SWI	OS_WriteI+17
-		move.b	D4,D0
-		lsr.b	#4,D0
-		not.b	D0
-		andi.b	#$F,D0
-		ori.b	#$80,D0
-		SWI	OS_WriteC
-
-		addq.l	#1,D4
-
-		move.w	#$0FFF, D7
-		and.w	D4,D7
-		bne	.lll5
-
-		; change mode
-		SWI	OS_WriteI+22
-		move.w	D4, D0
-		lsr.w	#8, D0
-		lsr.w	#4, D0
-		andi.b	#7, D0
-		SWI	OS_WriteC
-
-		bra	.lll5
+.s1		bra	kernel_go_todo
 
 
-		trap	#0
+
+
+
 
 		
 PrHex_l:	swap	D0
@@ -230,6 +162,8 @@ PrHex_nyb:	move.b	D0,-(A7)
 		SWI	OS_WriteC
 		move.b	(A7)+,D0
 		rts
+PrSpc:		move.b	#' ',D0
+		SWI	OS_WriteC
 
 
 
@@ -256,10 +190,10 @@ d_PrHex_nyb:	move.b	D0,-(A7)
 		rts
 
 
-PrString:	move.b	(A0)+,D0
+d_PrString:	move.b	(A0)+,D0
 		beq.b	.ex
 		bsr	deice_print
-		bra	PrString
+		bra	d_PrString
 .ex:		rts
 
 
@@ -338,30 +272,6 @@ handle_trap_0:
 		move.l	#OS_GenerateError, A0
 		bra	kernel_swi_handle
 
-		
-
-mos_DEFAULT_BRK_HANDLER:
-
-		; TODO reset stack?
-		move.w  (A7)+,D0
-		bsr	d_PrHex_w
-		bsr	deice_print_space
-		move.l	(A7)+,D0
-		bsr	d_PrHex_l
-		bsr	deice_print_space
-
-		move.b	(A0)+,D0
-		bsr	d_PrHex_b
-
-		bsr	deice_print_space
-
-.lp		move.b	(A0)+,D0
-		beq	.s1
-		bsr	deice_print
-		bra	.lp
-.s1		stop	#$2000
-		bra	.s1
-
 
 handle_trap_1:
 		movem.l	D0-D7/A0-A6,-(A7)
@@ -435,7 +345,7 @@ handle_trap_15:
 
 
 intmsg_bus:
-		bsr	PrString
+		bsr	d_PrString
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -465,7 +375,7 @@ intmsg
 .there		stop	#$2700
 		bra	.there
 
-intmsg_nostop	bsr	PrString
+intmsg_nostop	bsr	d_PrString
 
 		moveq	#13,D0
 		bsr	deice_print
@@ -616,15 +526,11 @@ mos_OSBYTE_126
 LE671		moveq	#-1,D1				;	E671
 ;; OSBYTE  124  Clear ESCAPE condition
 mos_OSBYTE_124
-		CLX
-		bra	mos_OSBYTE_125_2		;	E673
+		clr.b	zp_mos_ESC_flag
+		rts
 ;; OSBYTE  125  Set ESCAPE flag
 mos_OSBYTE_125
-		SEX
-mos_OSBYTE_125_2
-		move.b	zp_mos_ESC_flag,D0
-		roxr.b	#1,D0				;	E674
-		move.b	D0,zp_mos_ESC_flag
+		st.b	zp_mos_ESC_flag
 ;TODO: TUBE
 ;;	tst	sysvar_TUBE_PRESENT		;	E676
 ;;	bmi	LE67C				;	E679
@@ -640,7 +546,247 @@ mos_STAR_EXEC:
 		rts
 
 
+SWI_OS_Word_Handle:
+	move.l	D0,-(A7)
 
+	cmp.w	#8,D0
+	bhs	.toobig
+
+	asl.w	#1,D0
+	move.w	tblOSWORDS(PC,D0.W),D0
+	jsr	tblOSWORDS(PC,D0.w)
+
+.toobig:
+	movem.l (A7)+,D0
+	rts
+
+
+tblOSWORDS:
+	dc.w	OSWORD_RTS-tblOSWORDS		; 0
+	dc.w	OSWORD_1_READ_TIME-tblOSWORDS	; 1
+	dc.w	OSWORD_RTS-tblOSWORDS		; 2
+	dc.w	OSWORD_RTS-tblOSWORDS		; 3
+	dc.w	OSWORD_RTS-tblOSWORDS		; 4
+	dc.w	OSWORD_RTS-tblOSWORDS		; 5
+	dc.w	OSWORD_RTS-tblOSWORDS		; 6
+	dc.w	OSWORD_RTS-tblOSWORDS		; 7
+
+OSWORD_1_READ_TIME:
+	movem.l	D1/A1,-(A7)
+	moveq	#4,D0
+	move.l	D1,A0
+	lea	oswksp_TIME,A1
+	move.b	sysvar_TIMER_SWITCH,D1
+	ext.w	D1
+	lea	(A1,D1.w),A1
+.lp	move.b	-(A1),(A0)+
+	dbf	D0,.lp
+	movem.l	(A7)+,D1/A1
+OSWORD_RTS:
+	rts
+
+
+SWI_OS_Byte_Handle
+		; in the first part of the table?
+		cmp.b	#OSBYTE1_END, D0
+		blo	x_Process_OSBYTE_SECTION_1
+		cmp.b	#OSBYTE2_START, D0
+		blo	x_uk_OSBYTE
+		cmp.b	#OSBYTE2_END + 1, D0
+		blo	x_Process_OSBYTE_SECTION_2
+	
+		; >= 166, then read/write system variable
+
+		; TODO: sort out which ones are r/w and which ones need special Big-Endian frigs
+		DEBUG_INFO_S "OSBYTE R/W SYSVAR "
+		bra	mos_OSBYTE_nowt2
+
+x_Process_OSBYTE_SECTION_2
+		; save A
+		move.w	D0,-(A7)
+		sub.w	#OSBYTE2_START - OSBYTE1_END - 1, D0
+		bra	x_OSBYTE_trampoline
+
+x_Process_OSBYTE_SECTION_1
+		; save A
+		move.w	D0,-(A7)
+
+x_OSBYTE_trampoline
+		and.w	#$00FF, D0
+		asl.w	#1,D0
+		lea	tblOSBYTES(PC), A0
+		move.w	(A0,D0.w),D0
+		lea	(A0,D0.W), A0
+		move.w	(A7)+, D0
+		jmp	(A0)
+
+
+
+
+; TODO: Make these tables smaller with word sized pointers	
+tblOSBYTES:
+mostbl_OSBYTE_LOOK_UP
+		dc.w	mos_OSBYTE_0 - tblOSBYTES			
+		dc.w	mos_OSBYTE_1AND6 - tblOSBYTES		
+		dc.w	mos_OSBYTE_2 - tblOSBYTES			
+		dc.w	mos_OSBYTE_3AND4 - tblOSBYTES		
+		dc.w	mos_OSBYTE_3AND4 - tblOSBYTES		
+		dc.w	mos_OSBYTE_5 - tblOSBYTES			
+		dc.w	mos_OSBYTE_1AND6 - tblOSBYTES		
+		dc.w	mos_OSBYTE_07 - tblOSBYTES			
+		dc.w	mos_OSBYTE_08 - tblOSBYTES			
+		dc.w	mos_OSBYTE_09 - tblOSBYTES			
+		dc.w	mos_OSBYTE_10 - tblOSBYTES			
+		dc.w	mos_OSBYTE_11 - tblOSBYTES			
+		dc.w	mos_OSBYTE_12 - tblOSBYTES			
+		dc.w	mos_OSBYTE_13 - tblOSBYTES			
+		dc.w	mos_OSBYTE_14 - tblOSBYTES			
+		dc.w	mos_OSBYTE_15 - tblOSBYTES			
+		dc.w	mos_OSBYTE_16 - tblOSBYTES			
+		dc.w	mos_OSBYTE_17 - tblOSBYTES			
+		dc.w	mos_OSBYTE_18 - tblOSBYTES			
+		dc.w	mos_OSBYTE_19 - tblOSBYTES			
+		dc.w	mos_OSBYTE_20 - tblOSBYTES			
+		dc.w	mos_OSBYTE_21 - tblOSBYTES			
+OSBYTE1_END	equ	21
+
+OSBYTE2_START	equ	117
+mostbl_OSBYTE_LOOK_UP2
+		dc.w	mos_OSBYTE_117 - tblOSBYTES			
+		dc.w	mos_OSBYTE_118 - tblOSBYTES			
+		dc.w	mos_OSBYTE_119 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_121 - tblOSBYTES			
+		dc.w	mos_OSBYTE_122 - tblOSBYTES			
+		dc.w	mos_OSBYTE_123 - tblOSBYTES			
+		dc.w	mos_OSBYTE_124 - tblOSBYTES			
+		dc.w	mos_OSBYTE_125 - tblOSBYTES			
+		dc.w	mos_OSBYTE_126 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_129 - tblOSBYTES			
+		dc.w	mos_OSBYTE_130 - tblOSBYTES			
+		dc.w	mos_OSBYTE_131 - tblOSBYTES			
+		dc.w	mos_OSBYTE_132 - tblOSBYTES			
+		dc.w	mos_OSBYTE_133 - tblOSBYTES			
+		dc.w	mos_OSBYTE_134 - tblOSBYTES			
+		dc.w	mos_OSBYTE_135 - tblOSBYTES			
+		dc.w	mos_OSBYTE_136 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_143 - tblOSBYTES			
+		dc.w	mos_OSBYTE_144 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_146 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_148 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_150 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_156 - tblOSBYTES					
+		dc.w	mos_OSBYTE_157 - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_160 - tblOSBYTES			
+		dc.w	mos_OSBYTE_161 - tblOSBYTES			
+		dc.w	mos_OSBYTE_162 - tblOSBYTES			
+		dc.w	mos_OSBYTE_163 - tblOSBYTES			
+		dc.w	mos_OSBYTE_164 - tblOSBYTES			
+		dc.w	mos_OSBYTE_165 - tblOSBYTES			
+OSBYTE2_END	equ	165
+
+mos_OSBYTE_0
+mos_OSBYTE_1AND6
+mos_OSBYTE_2
+mos_OSBYTE_3AND4
+mos_OSBYTE_5
+mos_OSBYTE_07
+mos_OSBYTE_08
+mos_OSBYTE_09
+mos_OSBYTE_10
+mos_OSBYTE_11
+mos_OSBYTE_12
+mos_OSBYTE_13
+mos_OSBYTE_14
+mos_OSBYTE_15
+mos_OSBYTE_16
+mos_OSBYTE_17
+mos_OSBYTE_18
+mos_OSBYTE_19
+mos_OSBYTE_20
+mos_OSBYTE_21
+
+mos_OSBYTE_117
+mos_OSBYTE_118
+mos_OSBYTE_119
+mos_OSBYTE_121
+mos_OSBYTE_122
+mos_OSBYTE_123
+mos_OSBYTE_129
+mos_OSBYTE_130
+mos_OSBYTE_131
+mos_OSBYTE_132
+mos_OSBYTE_133
+mos_OSBYTE_134
+mos_OSBYTE_135
+mos_OSBYTE_136
+mos_OSBYTE_143
+mos_OSBYTE_144
+mos_OSBYTE_146
+mos_OSBYTE_148
+mos_OSBYTE_150
+mos_OSBYTE_156
+mos_OSBYTE_157
+mos_OSBYTE_160
+mos_OSBYTE_161
+mos_OSBYTE_162
+mos_OSBYTE_163
+mos_OSBYTE_164
+mos_OSBYTE_165
+
+
+
+
+
+mos_OSBYTE_nowt
+		; not implemented - print hex registers to DEBUG and exit
+
+		move.l	D0,-(A7)
+
+		DEBUG_INFO_S "TODO: OSBYTE: "
+
+mos_OSBYTE_nowt2
+		bsr	d_PrHex_b
+		bsr	deice_print_space
+		move.b	D1,D0
+		bsr	d_PrHex_b
+		bsr	deice_print_space
+		move.b	D2,D0
+		bsr	d_PrHex_b
+		bsr	deice_print_space
+		move.b	#13, 0
+		bsr	deice_print
+
+		move.l	(A7)+,D0
+		rts
+
+
+x_uk_OSBYTE	;
+		; TODO: check this is right		
+		move.l	D2,D4
+		move.l	D1,D3
+		move.l	D0,D2
+		move.b	#SERVICE_7_UKOSBYTE, D1
+		SWI	OS_ServiceCall
+		rts
 
 test_d:		dc.b	"Blitter Board 68000", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
 str_addr_err:	dc.b	"address error",0

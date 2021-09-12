@@ -19,7 +19,8 @@ OBJS=	font.o \
 	kernel_interrupts.o \
 	kernel_events.o \
 	kernel_sound.o \
-	kernel_buffers.o
+	kernel_buffers.o \
+	kernel_errors.o
 
 OBJS2=$(addprefix obj/, $(OBJS))
 
