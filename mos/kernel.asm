@@ -673,7 +673,7 @@ mostbl_OSBYTE_LOOK_UP2
 		dc.w	mos_OSBYTE_135 - tblOSBYTES			
 		dc.w	mos_OSBYTE_136 - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
-		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_138 - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
@@ -688,7 +688,7 @@ mostbl_OSBYTE_LOOK_UP2
 		dc.w	mos_OSBYTE_150 - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
-		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
+		dc.w	mos_OSBYTE_153 - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
 		dc.w	mos_OSBYTE_nowt - tblOSBYTES			
 		dc.w	mos_OSBYTE_156 - tblOSBYTES					
@@ -725,12 +725,8 @@ mos_OSBYTE_20
 mos_OSBYTE_21
 
 mos_OSBYTE_117
-mos_OSBYTE_118
 mos_OSBYTE_119
-mos_OSBYTE_121
-mos_OSBYTE_122
 mos_OSBYTE_123
-mos_OSBYTE_129
 mos_OSBYTE_130
 mos_OSBYTE_131
 mos_OSBYTE_132

@@ -10,7 +10,10 @@
 		xdef	mos_REMV_default_entry_point
 		xdef	mos_CNPV_default_entry_point
 		xdef	mos_flush_all_buffers
+		
+		xdef	mos_OSBYTE_138
 		xdef	mos_OSBYTE_145
+		xdef	mos_OSBYTE_153
 
 		SECTION	"code"
 

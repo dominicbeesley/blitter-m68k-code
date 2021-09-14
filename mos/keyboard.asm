@@ -12,9 +12,14 @@
 		xdef	x_Turn_on_Keyboard_indicators_API68
 		xdef 	mos_enter_keyboard_routines
 		xdef	KEYV_default
-		xdef	mos_OSBYTE_118
 		xdef 	x_keyb_leds_test_esc
 		xdef	mos_RDCHV_default_entry
+
+		xdef	mos_OSBYTE_121
+		xdef	mos_OSBYTE_122
+		xdef	mos_OSBYTE_129
+		xdef	mos_OSBYTE_118
+
 
 		SECTION "code"
 
