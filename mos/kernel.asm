@@ -47,6 +47,7 @@
 		xdef		handle_trap_13
 		xdef		handle_trap_14
 		xdef		handle_trap_15
+		xdef		kernel_reset_all_handlers
 
 		xdef		brkBadCommand
 
@@ -75,17 +76,24 @@
 
 		xdef 		SWI_OS_Word_Handle
 		xdef 		SWI_OS_Byte_Handle
-
+		xdef		SWI_OS_Control
+		xdef		SWI_OS_SetEnv
+		xdef		SWI_OS_BreakCtrl
+		xdef		SWI_OS_ChangeEnvironment
+		xdef		SWI_OS_CallBack
 
 		SECTION "code"
 
+
+DEFAULT_USR_STACK=$8000
 
 kernel_go_todo
 
 		;TODO: this is a bit simplistic
 		;enter user mode set up a stack and then enable interrupts and change mode
 		andi.w	#$80FF, SR
-		move.l	#$00008000, A7
+kernel_go_todo_after_error
+		move.l	#DEFAULT_USR_STACK, A7
 
 		; do a simple *GOS prompt
 
@@ -107,7 +115,7 @@ kernel_go_loop
 
 escape
 		MOVEQ	#OSBYTE_126_ESCAPE_ACK, D0	; OSBYTE $7E: Acknowledge detection of an ESCAPE condition
-		SWI	OS_Byte
+		SWI	XOS_Byte
 		MOVE.L	#err_escape, D0			; Point D0 to the ESCAPE error message
 		SWI	OS_GenerateError
 		BRA	kernel_go_loop                  ; This command should never be reached
@@ -115,31 +123,26 @@ escape
 
 
 mos_DEFAULT_BRK_HANDLER:
+		; Error block should be at D0 and error PC should be at 2(A7)
+		movea.l D0,A1
+		; copy to current error handler's buffer
+		move.l (handle_R3_Error), A0
+		move.l 2(A7), (A0)+
+		move.l (A1)+, (A0)+
 
-		exg.l	D0, A1
-		; TODO reset stack?
-		move.w  (A7)+,D0
-		bsr	PrHex_w
-		bsr	PrSpc
-		move.l	(A7)+,D0
-		bsr	PrHex_l
-		bsr	PrSpc
+		;copy up to 251 bytes to block and force terminator
+		move.w	#250, D1
+.lp		move.b 	(A1)+,(A0)+
+		dbeq	D1,.lp
+		clr.b	(A0)+				; just in case there's not been a terminator!
 
-		move.l	(A1)+,D0
-		bsr	PrHex_l
-		bsr	PrSpc
+		move.l	(handle_R2_Error), A4		; workspace pointer
+		
+		; force user mode
+		andi.w	#$8000,SR
 
-		exg.l	A1,D0
-
-		SWI	OS_Write0
-		SWI	OS_NewLine
-		SWI	OS_NewLine
-.s1		bra	kernel_go_todo
-
-
-
-
-
+		move.l	(handlev_Error), -(A7)		; jump blind to it - we don't expect a return!
+		rts
 
 		
 PrHex_l:	swap	D0
@@ -159,11 +162,11 @@ PrHex_nyb:	move.b	D0,-(A7)
 		bls	.dig
 		addq.b	#'A'-'9'-1,D0
 .dig:		add.b	#'0',D0
-		SWI	OS_WriteC
+		SWI	XOS_WriteC
 		move.b	(A7)+,D0
 		rts
 PrSpc:		move.b	#' ',D0
-		SWI	OS_WriteC
+		SWI	XOS_WriteC
 
 
 
@@ -511,34 +514,68 @@ brkBadCommand	trap	#0
 		dc.b 	"Bad Command", 0
 
 
-;; ----------------------------------------------------------------------------
-;; OSBYTE  126  Acknowledge detection of ESCAPE condition
-mos_OSBYTE_126
-		clr.b	D1				;	E65C
-		tst.b	zp_mos_ESC_flag			;	E65E
-		bpl	mos_OSBYTE_124			;	E660
-		move.b	sysvar_KEYB_ESC_EFFECT,D0	;	E662
-		bne	LE671				;	E665
-		CLI					;	E667
+;; Cribbed from RO 3.71 
+mos_OSBYTE_124
+		CLC
+		bra	Osbyte124_125		
+mos_OSBYTE_125
+		SEC
+Osbyte124_125	movem.l	D1,-(A7)		; preserve flags
+		scs	D1
+		move.b	D1,zp_mos_ESC_flag
+		bsr	callEscapeHV		; call escape vector and possibly set a callback
+		movem.l	(A7)+,D1
+		rts
+
+mos_OSBYTE_126	btst	#6, zp_mos_ESC_flag
+		beq	.noack
+		tst.b	sysvar_KEYB_ESC_EFFECT
+		bne	.noack
+
+		CLI				; flushing buffers requires interrupts
+
 		move.b	D0,sysvar_SCREENLINES_SINCE_PAGE;	E668
 		bsr	mos_STAR_EXEC			;	E66B
 		bsr	mos_flush_all_buffers				;	E66E
-LE671		moveq	#-1,D1				;	E671
-;; OSBYTE  124  Clear ESCAPE condition
-mos_OSBYTE_124
-		clr.b	zp_mos_ESC_flag
+
+.noack		bsr	mos_OSBYTE_124
+		btst	#6, zp_mos_ESC_flag
+		sne	D1
 		rts
-;; OSBYTE  125  Set ESCAPE flag
-mos_OSBYTE_125
-		st.b	zp_mos_ESC_flag
-;TODO: TUBE
-;;	tst	sysvar_TUBE_PRESENT		;	E676
-;;	bmi	LE67C				;	E679
-		rts					;	E67B
-;; 6809 ;; ; ----------------------------------------------------------------------------
-;; 6809 ;; LE67C		TODO	"TUBE ESCAPE"
-;; 6809 ;; ;LE67C:	jmp	L0403				;	E67C
-;; 6809 ;; ;; ----------------------------------------------------------------------------
+		
+
+
+;;;
+;;;
+;;;
+;;;;; ----------------------------------------------------------------------------
+;;;;; OSBYTE  126  Acknowledge detection of ESCAPE condition
+;;;mos_OSBYTE_126
+;;;		clr.b	D1				;	E65C
+;;;		tst.b	zp_mos_ESC_flag			;	E65E
+;;;		bpl	mos_OSBYTE_124			;	E660
+;;;		move.b	sysvar_KEYB_ESC_EFFECT,D0	;	E662
+;;;		bne	LE671				;	E665
+;;;		CLI					;	E667
+;;;		move.b	D0,sysvar_SCREENLINES_SINCE_PAGE;	E668
+;;;		bsr	mos_STAR_EXEC			;	E66B
+;;;		bsr	mos_flush_all_buffers				;	E66E
+;;;LE671		moveq	#-1,D1				;	E671
+;;;;; OSBYTE  124  Clear ESCAPE condition
+;;;mos_OSBYTE_124
+;;;		clr.b	zp_mos_ESC_flag
+;;;		rts
+;;;;; OSBYTE  125  Set ESCAPE flag
+;;;mos_OSBYTE_125
+;;;		st.b	zp_mos_ESC_flag
+;;;;TODO: TUBE
+;;;;;	tst	sysvar_TUBE_PRESENT		;	E676
+;;;;;	bmi	LE67C				;	E679
+;;;		rts					;	E67B
+;;;;; 6809 ;; ; ----------------------------------------------------------------------------
+;;;;; 6809 ;; LE67C		TODO	"TUBE ESCAPE"
+;;;;; 6809 ;; ;LE67C:	jmp	L0403				;	E67C
+;;;;; 6809 ;; ;; ----------------------------------------------------------------------------
 
 
 
@@ -781,7 +818,7 @@ x_uk_OSBYTE	;
 		move.l	D1,D3
 		move.l	D0,D2
 		move.b	#SERVICE_7_UKOSBYTE, D1
-		SWI	OS_ServiceCall
+		SWI	XOS_ServiceCall
 		rts
 
 test_d:		dc.b	"Blitter Board 68000", 13,10,17,2,17,129,"one", 13,10,17,1,17,128,"two",13,10,17,129,17,6,0
@@ -824,3 +861,281 @@ NETV_dummy	rts
 
 
 
+
+;=================================== Environment / Handler ============================================
+
+tblHandlerLocations
+	dc.l		handlev_MemoryLimit,		0,				0
+	dc.l		handlev_UndefinedInstruction,	0,				0
+	dc.l		handlev_PrefetchAbort,		0,				0
+	dc.l		handlev_DataAbort,		0,				0
+	dc.l		handlev_AddressException,	0,				0
+	dc.l		handlev_OtherException,		0,				0
+	dc.l		handlev_Error,			handle_R2_Error,		handle_R3_Error
+	dc.l		handlev_CallBack,		handle_R2_CallBack,		handle_R3_CallBack
+	dc.l		handlev_BreakPoint,		handle_R2_BreakPoint,		handle_R3_BreakPoint
+	dc.l		handlev_Escape,			handle_R2_Escape,		0
+	dc.l		handlev_Event,			handle_R2_Event,		0
+	dc.l		handlev_Exit,			handle_R2_Exit,			0
+	dc.l		handlev_UnusedSWI,		handle_R2_UnusedSWI,		0
+	dc.l		handlev_ExceptionRegisters,	0,				0
+	dc.l		handlev_ApplicationSpace,	0,				0
+	dc.l		handlev_CurrentlyActiveObject,	0,				0
+	dc.l		handlev_UpCall,			handle_R2_UpCall,		handle_R3_UpCall
+
+NUM_HANDLERS=17
+
+
+tblDefaultHandlers
+	dc.l		0,				0,				0
+	dc.l		defhandle_UndefinedInstruction,	0,				0
+	dc.l		defhandle_PrefetchAbort,	0,				0
+	dc.l		defhandle_DataAbort,		0,				0
+	dc.l		defhandle_AddressException,	0,				0
+	dc.l		defhandle_OtherException,	0,				0
+	dc.l		defhandle_Error,		0,				GEN_BUF
+	dc.l		defhandle_CallBack,		0,				DUMP_BUF
+	dc.l		defhandle_BreakPoint,		0,				DUMP_BUF
+	dc.l		defhandle_Escape,		0,				0
+	dc.l		defhandle_Event,		0,				0
+	dc.l		defhandle_Exit,			0,				0
+	dc.l		defhandle_UnusedSWI,		0,				0
+	dc.l		defhandle_ExceptionRegisters,	0,				0
+	dc.l		defhandle_ApplicationSpace,	0,				0
+	dc.l		defhandle_CurrentlyActiveObject,0,				0
+	dc.l		defhandle_UpCall,		0,				GEN_BUF
+
+
+SWI_OS_ChangeEnvironment
+	cmp.w	#NUM_HANDLERS,D0
+	bhi	.silly
+
+	move.w	SR,-(A7)
+	movem.l	A2-A4,-(A7)
+	SEI				; disable interrupts while we do this
+
+	mulu	#12,D0
+	lea	tblHandlerLocations,A0
+	lea	(A0,D0.w), A0
+
+	movem.l	(A0)+,A2-A4
+
+	; handler address
+	move.l	D1,D0
+	move.l	(A2),D1
+	tst.l	D0
+	beq	.s0
+	move.l	D0,(A2)
+.s0
+	;workspace
+	cmpa.l	#0,A3
+	beq	.s1
+	move.l	D2,D0
+	move.l	(A3),D2
+	tst.l	D0
+	beq	.s1
+	move.l	D0,(A3)
+.s1
+	;buffer
+	cmpa.l	#0,A4
+	beq	.s2
+	move.l	D3,D0
+	move.l	(A4),D3
+	tst.l	D0
+	beq	.s2
+	move.l	D0,(A4)
+.s2
+	movem.l	(A7)+, A2-A4
+	rte
+
+
+
+
+.silly
+	move.l	#err_BadEnvNumber,D0
+	SEV
+	rts
+
+
+kernel_reset_all_handlers:
+	; set default values in each handler
+	; TODO: probably need a more nuanced approach
+
+	lea	tblHandlerLocations(PC), A0
+	lea	tblDefaultHandlers(PC), A1
+	move.w	#NUM_HANDLERS-1, D3
+.lp	movem.l	(A0)+,A2-A4
+	movem.l (A1)+,D0-D2
+	move.l	D0,(A2)
+	cmpa.l	#0,A3
+	beq	.sk1
+	move.l	D1,(A3)
+.sk1	cmpa.l	#0,A4
+	beq	.sk2
+	move.l	D2,(A4)
+.sk2	dbf	D3,.lp
+	rts
+
+
+
+
+
+callEscapeHV
+	move.l	A4,-(A7)
+	pea	anExit(PC)
+	move.l	(handle_R2_Escape), A4
+	move.l	(handlev_Escape),-(A7)
+	rts
+anExit	cmpa.l	#1,A4
+	bne	.sk
+	SWI	XOS_SetCallBack
+.sk	move.l	(A7)+,A4	
+	rts
+
+
+
+defhandle_UndefinedInstruction
+	DEBUG_TODO	"defhandle_UndefinedInstruction"
+defhandle_PrefetchAbort
+	DEBUG_TODO	"defhandle_PrefetchAbort"
+defhandle_DataAbort
+	DEBUG_TODO	"defhandle_DataAbort"
+defhandle_AddressException
+	DEBUG_TODO	"defhandle_AddressException"
+defhandle_OtherException
+	DEBUG_TODO	"defhandle_OtherException"
+defhandle_CallBack
+	DEBUG_TODO	"defhandle_CallBack"
+defhandle_BreakPoint
+	DEBUG_TODO	"defhandle_BreakPoint"
+defhandle_Event
+	DEBUG_TODO	"defhandle_Event"
+defhandle_Exit
+	DEBUG_TODO	"defhandle_Exit"
+defhandle_UnusedSWI
+	DEBUG_TODO	"defhandle_UnusedSWI"
+defhandle_ExceptionRegisters
+	DEBUG_TODO	"defhandle_ExceptionRegisters"
+defhandle_ApplicationSpace
+	DEBUG_TODO	"defhandle_ApplicationSpace"
+defhandle_CurrentlyActiveObject
+	DEBUG_TODO	"defhandle_CurrentlyActiveObject"
+defhandle_UpCall
+	DEBUG_TODO	"defhandle_UpCall"
+
+
+
+
+defhandle_Escape:
+	rts
+
+
+defhandle_Error
+		move.l	#DEFAULT_USR_STACK, A7
+		lea.l	GEN_BUF, A1
+
+		move.l  (A1)+,D0
+		bsr	PrHex_l
+		bsr	PrSpc
+
+		move.l	(A1)+,D0
+		bsr	PrHex_l
+		bsr	PrSpc
+
+		move.l	A1, D0
+		SWI	XOS_Write0
+		SWI	XOS_NewLine
+		SWI	XOS_NewLine
+.s1		bra	kernel_go_todo_after_error
+
+
+SWI_OS_CallBack
+		movem.l	D2-D4,-(A7)
+		move.b	#HANDLER_7_CallBack,D4
+		bra	handlecomm
+handlecomm
+		move.l	D0,D3
+		move.l	D4,D0
+		jsr	CallCESWI
+		bvs	.s1
+		move.l	D3,D0
+.s1		movem.l	(A7)+,D2-D4
+		rts
+
+SWI_OS_BreakCtrl
+		movem.l	D2-D4,-(A7)
+		move.b	#HANDLER_8_BreakPoint,D4
+		bra	handlecomm
+	
+CallCESWI
+		clr.l	D2
+		SWI	XOS_ChangeEnvironment
+		rts
+
+		; assumes no errors!
+SWI_OS_Control	
+		move.w	SR,-(A7)
+		movem.l	D0-D3,-(A7)
+
+		SEI
+
+		move.b	#HANDLER_10_Event,D0
+		move.l	D3,D1
+		jsr	CallCESWI
+		move.l	D1,4(A7)
+
+		move.b	#HANDLER_9_Escape,D0
+		move.l	8(A7),D1
+		jsr	CallCESWI
+		move.l	D1,8(A7)
+
+		move.b	#HANDLER_6_Error,D0
+		movem.l	(A7)+,D1/D3
+		jsr	CallCESWI
+		move.l	D1,D0
+		move.l	D3,D0
+
+		movem.l	(A7)+,D2-D3
+		rte
+
+SWI_OS_SetEnv
+		move.w	SR,-(A7)
+		movem.l	D0-D1,-(A7)
+		SEI
+
+		move.b	#HANDLER_4_AddressException,D0
+		move.l	D7,D1
+		SWI	XOS_ChangeEnvironment
+		move.l	D1,D7
+
+		move.b	#HANDLER_3_DataAbort,D0
+		move.l	D6,D1
+		SWI	XOS_ChangeEnvironment
+		move.l	D1,D6
+
+		move.b	#HANDLER_2_PrefetchAbort,D0
+		move.l	D5,D1
+		SWI	XOS_ChangeEnvironment
+		move.l	D1,D5
+
+		move.b	#HANDLER_1_UndefinedInstruction,D0
+		move.l	D4,D1
+		SWI	XOS_ChangeEnvironment
+		move.l	D1,D4
+
+		move.b	#HANDLER_1_UndefinedInstruction,D0
+		move.l	4(A7),D1
+		SWI	XOS_ChangeEnvironment
+		move.l	D1,4(A7)
+
+		move.b	#HANDLER_11_Exit,D0
+		move.l	0(A7),D1
+		SWI	XOS_ChangeEnvironment
+		move.l	D1,0(A7)
+
+		;TODO: missed out RAMLIMIT in R2
+		;TODO: didn't clear R3
+
+
+		movem.l	(A7)+,D0-D1
+		rte

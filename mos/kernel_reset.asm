@@ -205,6 +205,10 @@ LDA5B		move.b	(A0)+,(A2)+
 .vlp2		clr.l	(A0)+
 		dbf	D0,.vlp2
 
+		DEBUG_INFO "init handlers"
+		jsr	kernel_reset_all_handlers
+
+
 ;;HEREHERHERERERE
 ;;
 ;;	IF MACH_BEEB
@@ -278,7 +282,15 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		
 		move.b	sysvar_STARTUP_OPT,D0			; init vdu
 
+		DEBUG_INFO "TODO: Test Memory and Set Limit"
+
 		TRACE
+		moveq	#HANDLER_0_MemoryLimit, D0
+		move.l	#$000B0000, D1				; really should be higher than this but avoid crashing roms
+		SWI	XOS_ChangeEnvironment
+
+
+
 		bsr	mos_VDU_init
 
 

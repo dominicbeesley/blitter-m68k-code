@@ -286,8 +286,46 @@ INSV					:=	$0454	; Insert characters into a buffer
 REMV					:=	$0458	; Remove characters from a buffer
 CNPV					:=	$045C	; Count or Purge a buffer
 
-STR_BUF					:=	$0600	; used for command line processing in *GOS
 
+; handler locations
+
+handlev_MemoryLimit			:=	$4C0
+handlev_UndefinedInstruction		:=	$4C4
+handlev_PrefetchAbort			:=	$4C8
+handlev_DataAbort			:=	$4CC
+handlev_AddressException		:=	$4D0
+handlev_OtherException			:=	$4D4
+handlev_Error				:=	$4D8
+handlev_CallBack			:=	$4DC
+handlev_BreakPoint			:=	$4E0
+handlev_Escape				:=	$4E4
+handlev_Event				:=	$4E8
+handlev_Exit				:=	$4EC
+handlev_UnusedSWI			:=	$4F0
+handlev_ExceptionRegisters		:=	$4F4
+handlev_ApplicationSpace		:=	$4F8
+handlev_CurrentlyActiveObject		:=	$4FC
+handlev_UpCall				:=	$500
+
+
+handle_R2_Error				:=	$504
+handle_R2_CallBack			:=	$508
+handle_R2_BreakPoint			:=	$50C
+handle_R2_Escape			:=	$510
+handle_R2_Event				:=	$514
+handle_R2_Exit				:=	$518
+handle_R2_UnusedSWI			:=	$51C
+handle_R2_UpCall			:=	$520
+
+handle_R3_Error				:=	$524
+handle_R3_CallBack			:=	$528	
+handle_R3_BreakPoint			:=	$52C	
+handle_R3_UpCall			:=	$530	
+
+; Used as default error buffer, string buffer - may need to have these sparate?
+STR_BUF					:=	$0600	; used for command line processing in *GOS
+GEN_BUF					:=	STR_BUF
+DUMP_BUF				:=	$0710	
 
 
 ********************************************************

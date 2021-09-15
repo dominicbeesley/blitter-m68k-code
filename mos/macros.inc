@@ -7,6 +7,18 @@
 		align	1
 		endm
 
+		macro DEBUG_TODO
+		jsr	deice_print_str
+		dc.b	"TODO: "
+		dc.b	\1
+		dc.b	13
+		dc.b	0
+		align	1
+.lp\@		stop	#$2000
+		bra	.lp\@
+		endm
+
+
 		macro DEBUG_INFO_S
 		jsr	deice_print_str
 		dc.b	\1

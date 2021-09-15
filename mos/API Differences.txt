@@ -1,0 +1,17 @@
+
+
+# Handlers
+
+In general handlers are called with:
+	the workspace pointer in a4 (c.f. R12)
+	other registers mapped as for SWIs except as noted below:
+
+
+
+## Escape Handler
+
+Escape state is passed in D1 (not R11)
+
+## Error Handler
+
+Error Handler workspace _is_ in a4 (R12) whereas passed in R0 on RiscOS

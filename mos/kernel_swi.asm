@@ -136,16 +136,16 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 0C
 		dc.w	SWI_UKSwi-*			; 0D
 		dc.w	SWI_OS_ReadLine-*		; 0E
-		dc.w	SWI_UKSwi-*			; 0F
+		dc.w	SWI_OS_Control-*		; 0F
 		dc.w	SWI_UKSwi-*			; 10
 		dc.w	SWI_UKSwi-*			; 11
-		dc.w	SWI_UKSwi-*			; 12
+		dc.w	SWI_OS_SetEnv-*			; 12
 		dc.w	SWI_OS_IntOn-*			; 13
 		dc.w	SWI_OS_IntOff-*			; 14
-		dc.w	SWI_UKSwi-*			; 15
+		dc.w	SWI_OS_CallBack-*		; 15
 		dc.w	SWI_OS_EnterOS-*		; 16
 		dc.w	SWI_UKSwi-*			; 17
-		dc.w	SWI_UKSwi-*			; 18
+		dc.w	SWI_OS_BreakCtrl-*		; 18
 		dc.w	SWI_UKSwi-*			; 19
 		dc.w	SWI_UKSwi-*			; 1A
 		dc.w	SWI_UKSwi-*			; 1B
@@ -189,7 +189,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 3F
 
 
-		dc.w	SWI_UKSwi-*			; 40
+		dc.w	SWI_OS_ChangeEnvironment-*	; 40
 		dc.w	SWI_UKSwi-*			; 41
 		dc.w	SWI_UKSwi-*			; 42
 		dc.w	SWI_UKSwi-*			; 43

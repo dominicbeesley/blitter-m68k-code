@@ -106,7 +106,26 @@ SERVICE_25_FSINFO			:=	$25
 
 FSCV_6_NewFS				:=	$06
 
-; OS Vectors
+
+; Handler Numbers
+HANDLER_0_MemoryLimit			:=	$00
+HANDLER_1_UndefinedInstruction		:=	$01
+HANDLER_2_PrefetchAbort			:=	$02
+HANDLER_3_DataAbort			:=	$03
+HANDLER_4_AddressException		:=	$04
+HANDLER_5_OtherException		:=	$05
+HANDLER_6_Error				:=	$06
+HANDLER_7_CallBack			:=	$07
+HANDLER_8_BreakPoint			:=	$08
+HANDLER_9_Escape			:=	$09
+HANDLER_10_Event			:=	$0A
+HANDLER_11_Exit				:=	$0B
+HANDLER_12_UnusedSWI			:=	$0C
+HANDLER_13_ExceptionRegisters		:=	$0D
+HANDLER_14_ApplicationSpace		:=	$0E
+HANDLER_15_CurrentlyActiveObject	:=	$0F
+HANDLER_16_UpCall			:=	$10
+
 
 
 OSBYTE_13_ENABLE_EVENT			:=	13

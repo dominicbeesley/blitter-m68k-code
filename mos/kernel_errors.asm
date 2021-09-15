@@ -11,3 +11,6 @@
 	SECTION "code"	        
 
 	ERROR_BLOCK	err_escape, $11, "Escape"
+	ERROR_BLOCK	err_BadEnvNumber, $1B0, "BadEnvNumber"
+	
+

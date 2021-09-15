@@ -1,5 +1,5 @@
 AS=vasmm68k_mot.exe
-ASFLAGS=-pic -m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
+ASFLAGS=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 
 TARGETS=mos68k.bin mos68k.noi
