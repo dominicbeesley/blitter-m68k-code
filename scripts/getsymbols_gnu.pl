@@ -45,12 +45,12 @@ while (<$fh_m>) {
 }
 
 
-print STDERR "=====\nAREAS\n=====\n";
+print "; =====\n; AREAS\n; =====\n";
 for my $k (sort keys %areas) {
-	printf STDERR "%08X <= %s\n", $areas{$k}, $k;
+	printf "; %08X <= %s\n", $areas{$k}, $k;
 }
 
-print STDERR "\n\n";
+print "; \n";
 
 close $fh_m;
 
@@ -69,10 +69,8 @@ while (my $fn = shift) {
 			last;
 		} elsif ($l =~ /^\s*input file\s*:\s*(.+?)\s*$/) {			
 			$input_file = $1;
-			print STDERR "===INPUT $input_file\n";
 		} elsif ($l =~ /^\s*output file\s*:\s*(.+?)\s*$/) {
 			$output_file = $1;
-			print STDERR "===OUTPUT $output_file\n";
 		} 
 
 	}
