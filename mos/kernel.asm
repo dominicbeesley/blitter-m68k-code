@@ -81,6 +81,7 @@
 		xdef		SWI_OS_BreakCtrl
 		xdef		SWI_OS_ChangeEnvironment
 		xdef		SWI_OS_CallBack
+		xdef		SWI_OS_Exit
 
 		SECTION "code"
 
@@ -88,8 +89,9 @@
 DEFAULT_USR_STACK=$8000
 
 kernel_go_todo
-
+		SWI	XOS_NewLine
 		;TODO: this is a bit simplistic
+		;TODO: need to reset supervisor stack?
 		;enter user mode set up a stack and then enable interrupts and change mode
 		andi.w	#$80FF, SR
 kernel_go_todo_after_error
@@ -1139,3 +1141,5 @@ SWI_OS_SetEnv
 
 		movem.l	(A7)+,D0-D1
 		rte
+
+SWI_OS_Exit	bra	kernel_go_todo
