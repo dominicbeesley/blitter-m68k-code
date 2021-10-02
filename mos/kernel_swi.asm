@@ -62,10 +62,10 @@ kernel_swi_handle
 		cmp.l	#SWI_TABLE_LOW_COUNT,D0
 		blo	low_swi
 		cmp.l	#256, D0
-		blo	SWI_UKSwi_restore_D0
+		blo	kernel_swi_pop_UkSWI
 		cmp.l	#512, D0
 		blo	SWI_OS_WriteI
-		bra	SWI_UKSwi_restore_D0
+		bra	kernel_swi_pop_UkSWI
 
 low_swi:	asl.l	#1,D0
 
@@ -302,11 +302,14 @@ SWI_NOWT:
 	; A0 = original SWI number
 	; D0 = SWI Number masked
 
-SWI_UKSwi_restore_D0:
-		move.l	(SP)+,D0
+kernel_swi_pop_UkSWI:
+		lea	4(SP),SP		; ignored popped D0
+		bsr	SWI_UKSwi
+		bra	swi_exit
+
 SWI_UKSwi
 		lea.l	ErrBlk_UKSwi(PC),A0
-		move.l	A0,D0		
+		move.l	A0,D0	
 		SEV
 		rts
 
