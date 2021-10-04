@@ -284,16 +284,11 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 
 		DEBUG_INFO "TODO: Test Memory and Set Limit"
 
-		TRACE
 		moveq	#HANDLER_0_MemoryLimit, D0
 		move.l	#$000B0000, D1				; really should be higher than this but avoid crashing roms
 		SWI	XOS_ChangeEnvironment
 
-
-
 		bsr	mos_VDU_init
-
-
 
 		DEBUG_INFO "Enter User Mode"
 
