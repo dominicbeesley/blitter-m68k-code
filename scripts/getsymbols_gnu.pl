@@ -99,21 +99,32 @@ while (my $fn = shift) {
 			my ($sym, $addr) = ($4, $3);
 			$addr = hex($addr) & 0xFFFFFFFF;
 			printf "DEF %s 0x%08X\n", $sym, $addr;
-		} elsif ($l =~ /^(\s+([^:]+):\d+)?\s+\*COM\*:([0-9A-F]+)\s(\w+)/i) {
-			my ($sym) = ($4);
+		} 
 
-			my $addr = $areas{"*COM*:$sym"};
-
-			if (!$addr) {
-				die "Cannot find common symbol $sym";
-			}
-
-
-			$addr = hex($addr) & 0xFFFFFFFF;
-			printf "DEF %s 0x%08X\n", $sym, $addr;
-		}
+# output all common symbols later
+##		elsif ($l =~ /^(\s+([^:]+):\d+)?\s+\*COM\*:([0-9A-F]+)\s(\w+)/i) {
+##			my ($sym) = ($4);
+##
+##			my $addr = $areas{"*COM*:$sym"};
+##
+##			if (!$addr) {
+##				die "Cannot find common symbol $sym";
+##			}
+##
+##
+##			$addr = hex($addr) & 0xFFFFFFFF;
+##			printf "DEF %s 0x%08X\n", $sym, $addr;
+##		}
 	}
 
+	for my $k (sort map { $_ =~ /^\*COM\*:/ ? ($_) : () } keys(%areas))
+	{
+		$k =~ /:(.*)/;
+		my $sym = $1;
+		$addr = hex($areas{$k}) & 0xFFFFFFFF;
+
+		printf "DEF %s %08X\n", $sym, $addr;
+	}
 
 
 	close $fh_s;
