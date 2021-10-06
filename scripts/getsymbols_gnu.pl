@@ -117,16 +117,15 @@ while (my $fn = shift) {
 ##		}
 	}
 
-	for my $k (sort map { $_ =~ /^\*COM\*:/ ? ($_) : () } keys(%areas))
-	{
-		$k =~ /:(.*)/;
-		my $sym = $1;
-		$addr = hex($areas{$k}) & 0xFFFFFFFF;
-
-		printf "DEF %s %08X\n", $sym, $addr;
-	}
-
-
 	close $fh_s;
+}
+
+for my $k (sort map { $_ =~ /^\*COM\*:/ ? ($_) : () } keys(%areas))
+{
+	$k =~ /:(.*)/;
+	my $sym = $1;
+	$addr = hex($areas{$k}) & 0xFFFFFFFF;
+
+	printf "DEF %s %08X\n", $sym, $addr;
 }
 
