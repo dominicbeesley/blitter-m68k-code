@@ -716,3 +716,154 @@
 #define XOS_WriteI 0x00020100
 
 
+
+
+/**********************************
+ * SWI names and SWI reason codes *
+ **********************************/
+#undef  Sound_Configure
+#define Sound_Configure                         0x40140
+#undef  XSound_Configure
+#define XSound_Configure                        0x60140
+#undef  Sound_Enable
+#define Sound_Enable                            0x40141
+#undef  XSound_Enable
+#define XSound_Enable                           0x60141
+#undef  Sound_Stereo
+#define Sound_Stereo                            0x40142
+#undef  XSound_Stereo
+#define XSound_Stereo                           0x60142
+#undef  Sound_Speaker
+#define Sound_Speaker                           0x40143
+#undef  XSound_Speaker
+#define XSound_Speaker                          0x60143
+#undef  Sound_Mode
+#define Sound_Mode                              0x40144
+#undef  XSound_Mode
+#define XSound_Mode                             0x60144
+#undef  SoundMode_ReadConfiguration
+#define SoundMode_ReadConfiguration             0x0
+#undef  SoundMode_SetOversampling
+#define SoundMode_SetOversampling               0x1
+#undef  Sound_LinearHandler
+#define Sound_LinearHandler                     0x40145
+#undef  XSound_LinearHandler
+#define XSound_LinearHandler                    0x60145
+#undef  Sound_SampleRate
+#define Sound_SampleRate                        0x40146
+#undef  XSound_SampleRate
+#define XSound_SampleRate                       0x60146
+#undef  SoundSampleRate_ReadCount
+#define SoundSampleRate_ReadCount               0x0
+#undef  SoundSampleRate_ReadCurrent
+#define SoundSampleRate_ReadCurrent             0x1
+#undef  SoundSampleRate_Lookup
+#define SoundSampleRate_Lookup                  0x2
+#undef  SoundSampleRate_Select
+#define SoundSampleRate_Select                  0x3
+#undef  Sound_Volume
+#define Sound_Volume                            0x40180
+#undef  XSound_Volume
+#define XSound_Volume                           0x60180
+#undef  Sound_SoundLog
+#define Sound_SoundLog                          0x40181
+#undef  XSound_SoundLog
+#define XSound_SoundLog                         0x60181
+#undef  Sound_LogScale
+#define Sound_LogScale                          0x40182
+#undef  XSound_LogScale
+#define XSound_LogScale                         0x60182
+#undef  Sound_InstallVoice
+#define Sound_InstallVoice                      0x40183
+#undef  XSound_InstallVoice
+#define XSound_InstallVoice                     0x60183
+#undef  SoundInstallVoice_ReadName
+#define SoundInstallVoice_ReadName              0x0
+#undef  SoundInstallVoice_AddNamedVoice
+#define SoundInstallVoice_AddNamedVoice         0x1
+#undef  SoundInstallVoice_ReadLocalName
+#define SoundInstallVoice_ReadLocalName         0x2
+#undef  SoundInstallVoice_ChangeLocalName
+#define SoundInstallVoice_ChangeLocalName       0x3
+#undef  Sound_RemoveVoice
+#define Sound_RemoveVoice                       0x40184
+#undef  XSound_RemoveVoice
+#define XSound_RemoveVoice                      0x60184
+#undef  Sound_AttachVoice
+#define Sound_AttachVoice                       0x40185
+#undef  XSound_AttachVoice
+#define XSound_AttachVoice                      0x60185
+#undef  Sound_ControlPacked
+#define Sound_ControlPacked                     0x40186
+#undef  XSound_ControlPacked
+#define XSound_ControlPacked                    0x60186
+#undef  Sound_Tuning
+#define Sound_Tuning                            0x40187
+#undef  XSound_Tuning
+#define XSound_Tuning                           0x60187
+#undef  Sound_Pitch
+#define Sound_Pitch                             0x40188
+#undef  XSound_Pitch
+#define XSound_Pitch                            0x60188
+#undef  Sound_Control
+#define Sound_Control                           0x40189
+#undef  XSound_Control
+#define XSound_Control                          0x60189
+#undef  Sound_AttachNamedVoice
+#define Sound_AttachNamedVoice                  0x4018A
+#undef  XSound_AttachNamedVoice
+#define XSound_AttachNamedVoice                 0x6018A
+#undef  Sound_ReadControlBlock
+#define Sound_ReadControlBlock                  0x4018B
+#undef  XSound_ReadControlBlock
+#define XSound_ReadControlBlock                 0x6018B
+#undef  Sound_WriteControlBlock
+#define Sound_WriteControlBlock                 0x4018C
+#undef  XSound_WriteControlBlock
+#define XSound_WriteControlBlock                0x6018C
+#undef  Sound_QInit
+#define Sound_QInit                             0x401C0
+#undef  XSound_QInit
+#define XSound_QInit                            0x601C0
+#undef  Sound_QSchedule
+#define Sound_QSchedule                         0x401C1
+#undef  XSound_QSchedule
+#define XSound_QSchedule                        0x601C1
+#undef  Sound_QRemove
+#define Sound_QRemove                           0x401C2
+#undef  XSound_QRemove
+#define XSound_QRemove                          0x601C2
+#undef  Sound_QFree
+#define Sound_QFree                             0x401C3
+#undef  XSound_QFree
+#define XSound_QFree                            0x601C3
+#undef  Sound_QSDispatch
+#define Sound_QSDispatch                        0x401C4
+#undef  XSound_QSDispatch
+#define XSound_QSDispatch                       0x601C4
+#undef  Sound_QTempo
+#define Sound_QTempo                            0x401C5
+#undef  XSound_QTempo
+#define XSound_QTempo                           0x601C5
+#undef  Sound_QBeat
+#define Sound_QBeat                             0x401C6
+#undef  XSound_QBeat
+#define XSound_QBeat                            0x601C6
+#undef  Sound_QInterface
+#define Sound_QInterface                        0x401C7
+#undef  XSound_QInterface
+#define XSound_QInterface                       0x601C7
+#undef  Sound_QSchedule32
+#define Sound_QSchedule32                       0x401C8
+#undef  XSound_QSchedule32
+#define XSound_QSchedule32                      0x601C8
+#undef  SoundQSchedule32_CallControlPacked
+#define SoundQSchedule32_CallControlPacked      0x0
+#undef  SoundQSchedule32_CallRoutine
+#define SoundQSchedule32_CallRoutine            0x0
+#undef  SoundQSchedule32_CallSWI
+#define SoundQSchedule32_CallSWI                0x1
+#undef  Service_Sound
+#define Service_Sound                           0x54
+#undef  Event_StartOfBar
+#define Event_StartOfBar                        0xC
