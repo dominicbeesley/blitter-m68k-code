@@ -23,6 +23,15 @@
 
 		SECTION "code"
 
+pause_VIA
+		move	SR,-(SP)
+		move.l	D0,-(SP)
+		moveq	#10,D0
+.lp		dbf	D0,.lp
+		move.l	(SP)+,D0
+		rtr
+
+
 
 ;; Keyboard Input and housekeeping; entered from &F00C 
 keyb_input_and_housekeeping			; LEEDA
@@ -74,6 +83,9 @@ keyb_check_key_code_API
 		move.b	#$7F,sheila_SYSVIA_ddra		;set bits 0 to 6 of port A to input on bit 7
 							;output on bits 0 to 6
 		move.b	D1,sheila_SYSVIA_ora_nh		;write X to Port A system VIA
+
+		bsr	pause_VIA
+
 		move.b	sheila_SYSVIA_ora_nh,D1		;read back &80 if key pressed (M set)
 		bpl	.sk
 		ori.b	#$08,1(A7)
@@ -369,6 +381,9 @@ LF0E3		bsr	keyb_enable_scan_IRQonoff	;select auto scan
 		move.b	#$0F,sheila_SYSVIA_ora_nh	;select non-existent keyboard column F (0-9 only!)									
 		move.b	#$01,sheila_SYSVIA_ifr		;cancel keyboard interrupt
 		move.b	D1,sheila_SYSVIA_ora_nh		;select column X (9 max)
+
+		bsr	pause_VIA
+
 		btst.b	#0,sheila_SYSVIA_ifr		;if bit 0 =0 there is no keyboard interrupt so
 		beq	LF123				;goto F123
 		move.b	D1,D0				;else put column address in A
@@ -520,8 +535,6 @@ x_keyb_leds_test_esc
 LE9F5		tst.b	zp_mos_ESC_flag
 		rts
 ;
-
-
 
 ;; ----------------------------------------------------------------------------
 ;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 

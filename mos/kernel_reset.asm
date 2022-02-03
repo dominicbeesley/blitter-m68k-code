@@ -45,6 +45,7 @@ kernel_handle_res:
 
 		; initialise DEICE monitor - TODO: move this to utility ROM 
 		bsr	deice_init
+		DEBUG_INFO	"BOOT..."
 
 		move.b	sheila_SYSVIA_ier,D0
 		asl.b	#1,D0
