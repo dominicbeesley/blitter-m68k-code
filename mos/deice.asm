@@ -75,7 +75,7 @@ TSTG
 		dc.b	68			; 2: PROCESSOR TYPE = 68k
 		dc.b	COMBUF_SIZE		; 3: SIZE OF COMMUNICATIONS BUFFER
 		dc.b	0			; 4: NO TASKING SUPPORT
-		dc.w	0,$FFFF			; 5-8: LOW AND HIGH LIMIT OF MAPPED MEM (NONE)		-- note 68008 has 24 bit address space "paging" register is just the high MSB!
+		dc.w	0,$FFFF			; 5-8: LOW AND HIGH LIMIT OF MAPPED MEM (ALL!)		-- note 68008 has 24 bit address space "paging" register is just the high MSB!
 		dc.b	B1-B0			; 9:  BREAKPOINT INSTR LENGTH
 B0		trap	#15			; 10: BREAKPOINT INSTRUCTION
 B1		
@@ -181,8 +181,8 @@ MA80		bsr	GETCHAR			; GET THE CHECKSUM
 		beq	WRITE_REGS
 		cmp.b	#FN_RUN_TARG,D0
 		beq	RUN_TARGET
-		cmp.b	#FN_SET_WORDS,D0
-		beq	SET_WORDS
+		cmp.b	#FN_SET_BYTES,D0
+		beq	SET_BYTES
 		cmp.b	#FN_IN,D0
 		beq	IN_PORT
 		cmp.b	#FN_OUT,D0
@@ -367,7 +367,7 @@ RUN_TARGET
 
 *===========================================================================
 *
-*  Set target words(s):	FN, len { (page, ahi, alow, data), (...)... }  - note address sense reversed from noice
+*  Set target byte(s):	FN, len { (page, ahi, alow, data), (...)... }  - note address sense reversed from noice
 *
 *  Entry with D0=function code, D1=data size, A0=COMBUF+2
 *
@@ -377,16 +377,16 @@ RUN_TARGET
 *
 *  This function is used primarily to set and clear breakpoints
 *
-*  NOTE: this is different to the standard NoICE protocol as it works with 32 bit addresses and 16 bit data
+*  NOTE: this is different to the standard NoICE protocol as it works with 24 bit addresses and 8 bit data
 *  
 *
-SET_WORDS
+SET_BYTES
 
 		lea	COMBUF+1,A1		; POINTER TO RETURN BUFFER
 		
 		clr.b	(A1)+			; SET RETURN COUNT AS ZERO
 					
-		divu	#5,D1			; LEN/5 = NUMBER OF BYTES TO SET
+		divu	#4,D1			; LEN/5 = NUMBER OF BYTES TO SET
 		subq	#1,D1
 		bmi	SB99			; JIF NO BYTES (COMBUF+1 = 0)
 *
@@ -399,27 +399,24 @@ SB10
 		move.b	(A0)+,D2
 		rol.w	#8,D2
 		move.b	(A0)+,D2
-		andi.b	#$FE,D2			; force word alignment
 		move.l	D2,A2
 
 *
 *  Read current data at word location
-		move.w	(A2),D2
+		move.b	(A2),D2
 *
 *  Insert new data at byte location
-		move.b	(A0)+,D0		; GET WORD TO BE STORED	(not aligned!)
-		rol.w	#8,D0
-		move.b	(A0)+,D0
-		move.w	D0,(A2)			; WRITE TARGET MEMORY
+		move.b	(A0)+,D0		; GET BYTE TO BE STORED	
+		move.b	D0,(A2)			; WRITE TARGET MEMORY
 *
 *  Verify write
-		cmp.w	(A2),D0			; READ TARGET MEMORY
+		cmp.b	(A2),D0			; READ TARGET MEMORY
 
 		bne	SB90			; BR IF INSERT FAILED: ABORT
 *
 *  Save target byte in return buffer
-		move.w	D2,(A1)+
-		addi.b	#2,COMBUF+1		; COUNT ONE RETURN WORD
+		move.b	D2,(A1)+
+		addi.b	#1,COMBUF+1		; COUNT ONE RETURN BYTE
 *
 *  Loop for next byte
 		dbf	D1,SB10			; *LOOP FOR ALL BYTES
