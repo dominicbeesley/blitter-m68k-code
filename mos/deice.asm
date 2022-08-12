@@ -430,7 +430,7 @@ SB99		bra	SEND
 
 *===========================================================================
 *
-*  Input from port:  FN, len, PortAddressHi, PAlo (=0)	- note BigEndian
+*  Input from port:  FN, len, PAlo, PAhi
 *
 *  While the 68008 has no input or output instructions, we retain these
 *  to allow write-without-verify, this always reads from address $FFFFxxxx
@@ -444,6 +444,7 @@ IN_PORT
 		move.b	(A0)+,D2
 		rol.w	#8,D2
 		move.b	(A0)+,D2
+		rol.w	#8,D2		; swap endianness
 		move.l	D2,A1
 
 *
@@ -455,7 +456,7 @@ IN_PORT
 
 *===========================================================================
 *
-*  Output to port  FN, len, PortAddressHi, PAlo (=0)	- note BigEndian
+*  Output to port  FN, len, PAlo, PAHi, Data byte
 *
 *  While the 68008 has no input or output instructions, we retain these
 *  to allow write-without-verify, this writes from address $FFFFxxxx
@@ -469,6 +470,7 @@ OUT_PORT
 		move.b	(A0)+,D2
 		rol.w	#8,D2
 		move.b	(A0)+,D2
+		rol.w	#8,D2		; swap endianness
 		move.l	D2,A1
 *
 *  Get data
