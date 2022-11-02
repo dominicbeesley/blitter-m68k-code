@@ -58,8 +58,16 @@
 		scs.b	(A1)+
 		scs.b	(A1)+
 		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
 		dbf	D5,.\@_lp1
-		adda	#640-64,A1
+		adda	#640-128,A1
 		dbf	D4,.\@_lp0
 		endm
 
@@ -192,7 +200,7 @@ kernel_go_todo:
 
 		move.w	#$FFFF,D2
 .ilo1:		lea.l	-$D000,A0		; FF3000
-		move.w	#$5000/2,D1
+		move.w	#$5000/16,D1
 .ilo21:		addq.w	#1,(A0)+
 		dbf	D1,.ilo21		
 
