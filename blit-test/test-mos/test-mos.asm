@@ -36,6 +36,34 @@
 		NOP
 		endm
 
+		macro WAITL n
+		move.l	#\1, D7
+.\@_lp:		subq.l	#1,D7
+		bcc	.\@_lp
+		endm
+
+		macro MAGNIFY
+		; show 8 bytes from 3000-3007 magnified at bottom of screen
+		lea.l	-$D000,A0	; src
+		lea.l	-$A800,A1	; dest
+		moveq	#7,D4
+.\@_lp0:	move.b	(A0)+,D3
+		moveq	#7,D5
+.\@_lp1:	rol.b	#1,D3
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		scs.b	(A1)+
+		dbf	D5,.\@_lp1
+		adda	#640-64,A1
+		dbf	D4,.\@_lp0
+		endm
+
+
 STACK := $1000
 
 		section "code"
@@ -92,9 +120,9 @@ kernel_go_todo:
 
 		moveq	#17,D1
 		lea.l	mode_7_setup,A0
-.lm1:		move.b	D1,sheila_CRTC_reg
+.lm01:		move.b	D1,sheila_CRTC_reg
 		move.b	(A0, D1), sheila_CRTC_rw
-		dbf	D1,.lm1
+		dbf	D1,.lm01
 		
 		move.b	#$4B,sheila_VIDULA_ctl
 
@@ -106,8 +134,77 @@ kernel_go_todo:
 		dbf	D1,.sl
 
 
-		stop	#$2700
+		WAITL 6000000
 
+		; switch to mode 0 and do some reading an writing
+
+		; set up palette as B&W
+		moveq	#7,D0
+.pl0:		move.b	D0,sheila_VIDULA_pal
+		add.b	#$10,D0
+		bpl	.pl0
+
+		move.b	#$81,D0
+.pl1:		move.b	D0,sheila_VIDULA_pal
+		add.b	#$10,D0
+		bcc	.pl1
+
+
+
+		moveq	#17,D1
+		lea.l	mode_0_setup,A0
+.lm1:		move.b	D1,sheila_CRTC_reg
+		move.b	(A0, D1), sheila_CRTC_rw
+		dbf	D1,.lm1
+		
+		move.b	#$9D,sheila_VIDULA_ctl
+
+		; clear screen memory
+		move.b	#$FF,D0
+.cl0lp0:	lea.l	-$D000,A0		; FF3000
+		move.w	#$5000,D1
+.cl0lp:		move.b	D0,(A0)+
+		dbf	D1,.cl0lp
+
+		MAGNIFY
+
+		dbf	D0,.cl0lp0
+
+		WAITL 2000000
+
+
+		; increment bytes
+
+		move.w	#$FF,D2
+.ilo:		lea.l	-$D000,A0		; FF3000
+		move.w	#$5000,D1
+.ilo2:		addq.b	#1,(A0)+
+		dbf	D1,.ilo2
+
+		MAGNIFY
+
+		dbf	D2,.ilo
+
+		; increment words
+
+		WAITL 2000000
+
+
+		move.w	#$FFFF,D2
+.ilo1:		lea.l	-$D000,A0		; FF3000
+		move.w	#$5000/2,D1
+.ilo21:		addq.w	#1,(A0)+
+		dbf	D1,.ilo21		
+
+		MAGNIFY
+
+		dbf	D2,.ilo1
+
+
+		WAITL 2000000
+
+
+		bra	kernel_go_todo
 
 
 
@@ -116,7 +213,7 @@ kernel_go_todo:
 		move.l	(A7)+, D0
 
 lp2:
-		movea.l 	#-$D000,A0
+		movea.l #-$D000,A0
 		move.l	#$5000,D1
 		addq	#1,D0
 lp:		addq	#1,D0
@@ -128,7 +225,7 @@ lp:		addq	#1,D0
 
 
 mode_7_setup: 	dc.b $3F, $28, $33, $24, $1E, $02, $19, $1C, $93, $12, $72, $13, $28, $00, $00, $00, $28, $00 ;; HI(((mode_7_screen) - &74) EOR &20), LO(mode_7_screen)
-mode_0_setup: 	dc.b $7F, $50, $62, $28, $26, $00, $20, $23, $01, $07, $67, $08, $04, $00, $00, $00, $02, $00 ;; addr / 8
+mode_0_setup: 	dc.b $7F, $50, $62, $28, $26, $00, $20, $23, $01, $07, $67, $08, $06, $00, $00, $00, $06, $00 ;; addr / 8
 
 
 handle_unex:
