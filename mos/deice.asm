@@ -214,32 +214,34 @@ TS10		move.b	(A0)+,D0		; MOVE REPLY DATA TO BUFFER
 		bra	SEND
 
 
-GetAddrA1
-		clr.l	D0
+GetAddrD0
+		
 		move.b	0(a0),D0
-		swap	D0			; get PAGE into bit 23..16
-
-*
-*  Get address - big endian, non aligned
-		move.b	1(a0),D0
 		rol.w	#8,D0
+		move.b	1(a0),D0
+
+		swap	D0			
+
 		move.b	2(a0),D0
-		move.l	D0,A1			; ADDRESS IN A1
+		rol.w	#8,D0
+		move.b	3(a0),D0
 		rts
 
 *===========================================================================
 *
-*  Read Memory:	 FN, len, page, Alo, Ahi, Nbytes
+*  Read Memory:	 FN, len, Add32(BE), Nbytes
 *
 *  Entry with A=function code, B=data size, X=COMBUF+2
 *
+* NOTE: depart from NoIce - 32 bit addresses
 READ_MEM
 
-		bsr	GetAddrA1
+		bsr	GetAddrD0
+		move.l	D0,A1
 *
 *  Prepare return buffer: FN (unchanged), LEN, DATA
 		clr.w	D1
-		move.b	3(A0),D1		; NUMBER OF BYTES TO RETURN
+		move.b	4(A0),D1			; NUMBER OF BYTES TO RETURN
 		move.b	D1,COMBUF+1		; RETURN LENGTH = REQUESTED DATA	
 		beq	GLP90			; JIF NO BYTES TO GET
 		subq.w	#1,D1
@@ -254,25 +256,27 @@ GLP90		bra	SEND
 
 *===========================================================================
 *
-*  Write Memory:  FN, len, page, Alo, Ahi, (len-3 bytes of Data)
+*  Write Memory:  FN, len, page, Add32BE, (len-3 bytes of Data)
 *
 *  Entry with A=function code, B=data size, X=COMBUF+2
 *
 *  Uses 6 bytes of stack
 *
+* NOTE: depart from NoIce - 32 bit addresses
 WRITE_MEM
 
-		bsr	GetAddrA1
+		bsr	GetAddrD0
+		move.l	D0,A1
 
 *
 *  Compute number of bytes to write
 		clr.w	D1
 		move.b	COMBUF+1,D1		; NUMBER OF BYTES TO WRITE+3
-		subq.w	#4,D1			; MINUS PAGE AND ADDRESS and 1 for good luck
+		subq.w	#5,D1			; MINUS PAGE AND ADDRESS and 1 for good luck
 		bmi	WLP50			; JIF NO BYTES TO PUT
 
 *
-		lea.l	3(A0),A0		; point at start of data
+		lea.l	4(A0),A0		; point at start of data
 
 *  Write the specified bytes to local memory
 		movem.l	D1/A0/A1,-(A7)
@@ -367,7 +371,7 @@ RUN_TARGET
 
 *===========================================================================
 *
-*  Set target byte(s):	FN, len { (page, ahi, alow, data), (...)... }  - note address sense reversed from noice
+*  Set target byte(s):	FN, len { (Add32(BE), data), (...)... }  - note address sense reversed from noice
 *
 *  Entry with D0=function code, D1=data size, A0=COMBUF+2
 *
@@ -377,7 +381,7 @@ RUN_TARGET
 *
 *  This function is used primarily to set and clear breakpoints
 *
-*  NOTE: this is different to the standard NoICE protocol as it works with 24 bit addresses and 8 bit data
+*  NOTE: this is different to the standard NoICE protocol as it works with 32 bit addresses and 8 bit data
 *  
 *
 SET_BYTES
@@ -386,20 +390,15 @@ SET_BYTES
 		
 		clr.b	(A1)+			; SET RETURN COUNT AS ZERO
 					
-		divu	#4,D1			; LEN/5 = NUMBER OF BYTES TO SET
+		divu	#5,D1			; LEN/5 = NUMBER OF BYTES TO SET
 		subq	#1,D1
 		bmi	SB99			; JIF NO BYTES (COMBUF+1 = 0)
 *
 *  Loop on inserting bytes
 SB10		
-		; get 32-bit address (big endian)
-		clr.l	D2
-		move.b	(A0)+,D2
-		swap	D2
-		move.b	(A0)+,D2
-		rol.w	#8,D2
-		move.b	(A0)+,D2
-		move.l	D2,A2
+		bsr	GetAddrD0
+		addq	#4,A0
+		move.l	D0,A2
 
 *
 *  Read current data at word location
