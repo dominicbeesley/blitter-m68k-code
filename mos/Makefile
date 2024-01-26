@@ -1,4 +1,4 @@
-AS=vasmm68k_mot.exe
+AS=vasmm68k_mot
 ASFLAGS=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 ASFLAGS2=-m68008 -spaces -ldots -I ../includes -D MACH_BEEB=1 -D MACH_CHIPKIT=0
 
@@ -35,7 +35,7 @@ hostfs:: all
 mos68k.bin: $(OBJS2) debugsyms.noi mos68k.lnk.txt 
 	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $(OBJS2) > mos68k.sym
 	../scripts/getsymbols.pl <$(basename $@).sym >$(basename $@).noi
-	if [[ -e debugsyms.noi ]]; then \
+	if [ -e debugsyms.noi ]; then \
 		cat $(basename $@).noi debugsyms.noi >tmp.noi; \
 		mv tmp.noi $(basename $@).noi; \
 	fi

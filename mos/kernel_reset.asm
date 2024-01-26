@@ -279,17 +279,19 @@ LDAA2		move.b	#$27,D0					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 		move.b	D0,sheila_SYSVIA_t1lh			;or 10msec, interrupts occur every 10msec therefore
 		move.b	D0,sheila_SYSVIA_t1ch			;
 
-		DEBUG_INFO "VDU init"
-		
-		move.b	sysvar_STARTUP_OPT,D0			; init vdu
-
 		DEBUG_INFO "TODO: Test Memory and Set Limit"
 
 		moveq	#HANDLER_0_MemoryLimit, D0
 		move.l	#$000B0000, D1				; really should be higher than this but avoid crashing roms
 		SWI	XOS_ChangeEnvironment
 
+		DEBUG_INFO "VDU init"
+		
+;;		move.b	sysvar_STARTUP_OPT,D0			; init vdu
+		move.b	#0,D0			; init vdu
 		bsr	mos_VDU_init
+
+
 
 		DEBUG_INFO "Enter User Mode"
 
