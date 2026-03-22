@@ -2,7 +2,7 @@ include ../Makefile.defs
 
 
 TARGETS=mos68k.bin mos68k.noi
-DEPS=../includes/mos.inc ../includes/oslib.inc ../hardware.inc
+DEPS=$(INC)/mos.inc $(INC)/oslib.inc $(INC)/hardware.inc
 
 OBJS=	font.o \
 	vdu.o \
@@ -24,12 +24,8 @@ OBJS=	font.o \
 OBJS_B=$(addprefix $(BUILD)/, $(OBJS))
 TARGETS_B=$(addprefix $(BUILD)/, $(TARGETS))
 
-HOSTFSDIR=~/hostfs/test68008
-
 all: $(TARGETS_B)
 
-hostfs:: all
-	cp $(TARGETS_B) $(HOSTFSDIR)
 
 $(BUILD)/mos68k.noi: $(BUILD)/mos68k.bin debugsyms.noi 
 	$(SCRIPTS)/getsymbols.pl <$(basename $@).sym >$(basename $@).noi
@@ -40,6 +36,8 @@ $(BUILD)/mos68k.noi: $(BUILD)/mos68k.bin debugsyms.noi
 
 $(BUILD)/mos68k.bin: $(OBJS_B) mos68k.lnk.txt 
 	vlink -M -T mos68k.lnk.txt -b rawbin1 -o $@ $(OBJS_B) > $(BUILD)/mos68k.sym
+	echo "M.MOS68K FF7D0000 FFFFFFFF" >$@.inf
+
 
 $(BUILD)/%.o: $(DEPS)
 $(BUILD)/%.o: %.asm 

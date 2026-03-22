@@ -1,0 +1,1 @@
+CLS:OSCLI("EXEC"):OSCLI("XMLOAD M.TEST68K 7D0000"):P. "Now mosram-hard-long-break!":REPEAT:UNTIL FALSE
