@@ -1,6 +1,6 @@
 include ../Makefile.defs
 
-
+SSD=$(SSDS)/mos68k.ssd
 TARGETS=mos68k.bin mos68k.noi
 DEPS=$(INC)/mos.inc $(INC)/oslib.inc $(INC)/hardware.inc
 
@@ -43,8 +43,23 @@ $(BUILD)/%.o: $(DEPS)
 $(BUILD)/%.o: %.asm 
 	$(AS) $(ASFLAGS) -Fvobj -o $@ -L $(basename $@).lst $<
 
+ssd:$(SSD)
+
+$(SSD): all
+	dfs form -80 $(SSD)
+	dfs title $(SSD) "mos68k"
+	dfs add $(SSD) extras/*.inf
+	dfs add $(SSD) $(BUILD)/*.inf
+	dfs opt4 -3 $(SSD)
+
+deploy: ssd
+	mkdir -p $(DEPLOY_TOP)/mos68k
+	dfs read -i -d $(DEPLOY_TOP)/mos68k $(SSD)
+
 clean::
+	-rm $(SSD)
 	-rm $(TARGETS_B) 
+	-rm $(addsuffix .inf, $(TARGETS_B))
 	-rm $(OBJS_B) 
 	-rm $(addsuffix .lst, $(basename $(OBJS_B)))
 	-rm $(addsuffix .sym, $(basename $(TARGETS_B)))
