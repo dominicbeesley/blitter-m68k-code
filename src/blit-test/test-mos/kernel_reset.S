@@ -1,15 +1,10 @@
 
 
-		include "mos.inc"
-		include "oslib.inc"
-		include "hardware.inc"
-		include "macros.inc"
 
 		xdef kernel_handle_res
 
 
-		SECTION "code"
-
+		.text
 
  **************************************************************************
  **************************************************************************
