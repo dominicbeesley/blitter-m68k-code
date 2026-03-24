@@ -126,7 +126,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_OS_Write0-*			; 02
 		dc.w	SWI_OS_NewLine-*		; 03
 		dc.w	SWI_OS_ReadC-*			; 04
-		dc.w	SWI_NOWT-*			; 05
+		dc.w	SWI_OS_CLI-*			; 05
 		dc.w	SWI_OS_Byte-*			; 06
 		dc.w	SWI_OS_Word-*			; 07
 		dc.w	SWI_UKSwi-*			; 08
@@ -528,4 +528,7 @@ SWI_OS_Word:
 
 SWI_OS_Byte:
 		move.l	(BYTEV),-(A7)
+		rts
+
+SWI_OS_CLI:	move.l	(CLIV),-(A7)
 		rts

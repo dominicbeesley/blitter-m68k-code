@@ -8,7 +8,7 @@ defaultosvectors
 	dc.l	mos_DEFAULT_BRK_HANDLER-*	;  LD942 BRKV
 	dc.l	kernel_irq1v_handle-*		;	mos_IRQ1V_default_entry		;  LD944 IRQ1V
 	dc.l	kernel_irq2v_handle-*		;	mos_IRQ2V_default_entry		;  LD946 IRQ2V
-	dc.l	brkBadCommand-*			;	mos_CLIV_default_handler	;  LD948 CLIV
+	dc.l	mos_DEFAULT_CLI-*		;	mos_CLIV_default_handler	;  LD948 CLIV
 	dc.l	SWI_OS_Byte_Handle-*		;	mos_default_BYTEV_handler	;  LD94A BYTEV
 	dc.l	SWI_OS_Word_Handle-*		;	mos_WORDV_default_entry		;  LD94C WORDV
 	dc.l	mos_WRCH_default_entry-*	;  LD94E WRCHV

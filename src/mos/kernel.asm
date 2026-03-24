@@ -83,6 +83,8 @@
 		xdef		SWI_OS_CallBack
 		xdef		SWI_OS_Exit
 
+		xdef		mos_DEFAULT_CLI
+
 		SECTION "code"
 
 
@@ -112,7 +114,7 @@ kernel_go_loop
 		BCS	escape				; Jump if user pressed ESCAPE
 
 		MOVE.L	#STR_BUF, D0			; D0 points to the line read by the OS_ReadLine32 call
-		SWI	OS_CLI, A0			; SWI OS_CLI: Process command
+		SWI	OS_CLI				; SWI OS_CLI: Process command
 		BRA	kernel_go_loop          	; Loop infinitely
 
 escape
@@ -1143,3 +1145,15 @@ SWI_OS_SetEnv
 		rte
 
 SWI_OS_Exit	bra	kernel_go_todo
+
+
+
+mos_DEFAULT_CLI:
+		movem.l D0-D2/A0-A2,-(A7)
+
+
+; TODO: command table, pass to FS, modules etc */		
+
+
+
+		bra	brkBadCommand
