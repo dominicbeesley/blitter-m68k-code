@@ -91,11 +91,11 @@
 DEFAULT_USR_STACK=$8000
 
 kernel_go_todo
-		SWI	XOS_NewLine
 		;TODO: this is a bit simplistic
 		;TODO: need to reset supervisor stack?
 		;enter user mode set up a stack and then enable interrupts and change mode
-		andi.w	#$80FF, SR
+		andi.w	#$80FF, SR			; drop back to user mode
+		SWI	XOS_NewLine
 kernel_go_todo_after_error
 		move.l	#DEFAULT_USR_STACK, A7
 
@@ -1147,13 +1147,95 @@ SWI_OS_SetEnv
 SWI_OS_Exit	bra	kernel_go_todo
 
 
+skipSpacesAndStars:
+		move.b	(A0)+, D0
+		cmp.b	#' ', D0
+		beq.s	skipSpacesAndStars
+		cmp.b	#'*', D0
+		beq.s	skipSpacesAndStars
+		subq.l	#1, A0
+		rts
+
+skipSpaces:
+		move.b	(A0)+, D0
+		cmp.b	#' ', D0
+		beq.s	skipSpaces
+		subq.l	#1, A0
+		rts
+
 
 mos_DEFAULT_CLI:
-		movem.l D0-D2/A0-A2,-(A7)
+		movem.l D0-D2/A0-A3,-(A7)
+
+		move.l	D0, A0
+		bsr	skipSpacesAndStars
+		move.l	A0, A3		; save table pointer
+
+		lea	cmdTable, A1	; table pointer
+cmdTabLp:	move.l	A3,A0		; get back initial text pointer
+		move.w	0(A1), D0	; table string pointer
+		lea	cmdTable(PC,D0.w),A2; translate table offset to full addr
+		beq	brkBadCommand	; end of table - brk
+cmdTabCmpLp:	move.b	(A2)+, D0	; D0 contains byte from table string
+		beq.s	.cmdEnd		; skip to end of command check
+		move.b	(A0)+, D1	; get byte from CLI
+		cmp.b	#'.', D1
+		beq.s	.cmdDispatch	; abbreviated - dispatch to command
+		eor.b	D1, D0		
+		and.b	#$DF, D0		; compare case-insensitive (TODO: maybe need to do proper convert?)
+		beq	cmdTabCmpLp
+.cmdNext:	addq.l	#4, A1
+		bra	cmdTabLp		
 
 
-; TODO: command table, pass to FS, modules etc */		
+.cmdEnd:		move.b	(A0)+, D0	; we are at end of command string in table
+		cmp.b	#' ', D0		; are we at end of CLI string? (space or <32)
+		bhi.s	.cmdNext		; > then next in table, else dispatch
+.cmdDispatch:	bsr	skipSpaces
+		move.w	2(A1), D1
+		bsr	cmdTableDispatch
+		bvc	.noErr
+		movem.l D0, (A7)
+.noErr:		movem.l	(A7)+, D0-D2/A0-A3
+		rts
 
 
+		macro	CMD_TAB_ENT
+		dc.w	str\1-cmdTable, cmd\1-cmdTableDispatch-2
+		endm	CMD_TAB_ENT
 
-		bra	brkBadCommand
+cmdTable:
+	
+	CMD_TAB_ENT	GO
+	CMD_TAB_ENT	DEICE	
+	dc.w	0
+		align	1
+
+cmdTableDispatch:	jmp	(PC,D1.w)
+
+strGO:		dc.b	"GO",0
+strDEICE:	dc.b	"DEICE",0
+		align	1
+
+cmdGO:		move.l	A0, D1
+		move.l	#$80000010, D0
+		SWI	XOS_ReadUnsigned
+		bvs	.cmdGOBad
+
+
+		;TODO: this is a bit simplistic
+		;TODO: need to reset supervisor stack?
+		;enter user mode set up a stack and then enable interrupts and change mode
+		andi.w	#$80FF, SR			; drop back to user mode
+		SWI	XOS_NewLine
+		bvs	.cmdGOBad
+		move.l	#DEFAULT_USR_STACK, A7
+		move.l	D2, A0
+		jmp	(A0)
+
+.cmdGOBad:	rts
+cmdDEICE:	SWI	XOS_WriteS
+		dc.b	"DEDE",0
+		align	1
+		rts
+
