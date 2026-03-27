@@ -154,7 +154,7 @@ SWI_TABLE_LOW	dc.w	SWI_OS_WriteC-*			; 00
 		dc.w	SWI_UKSwi-*			; 1E
 		dc.w	SWI_UKSwi-*			; 1F
 		dc.w	SWI_UKSwi-*			; 20
-		dc.w	SWI_UKSwi-*			; 21
+		dc.w	SWI_OS_ReadUnsigned-*		; 21
 		dc.w	SWI_UKSwi-*			; 22
 		dc.w	SWI_UKSwi-*			; 23
 		dc.w	SWI_UKSwi-*			; 24
@@ -315,7 +315,7 @@ SWI_UKSwi
 
 ErrBlk_UKSwi	dc.l	$1e6
 		dc.b    "No Such SWI", 0
-
+		align	2
 
 ; TODO: just move to callRDCHV - should that ever return with V set?
 SWI_OS_WriteC	bsr	callWRCHV
@@ -467,9 +467,9 @@ OSWORD_0_read_line_loop_inc
 		addq.b  #1,D0				;increment Y
 		lea.l	1(A1),A1
 OSWORD_0_read_line_loop_echo				; LE921
-		SWI	OS_WriteC			;and call OSWRCH 
+		SWI	XOS_WriteC			;and call OSWRCH 
 OSWORD_0_read_line_loop_read				; LE924
-		SWI	OS_ReadC			;else read character  from input stream
+		SWI	XOS_ReadC			;else read character  from input stream
 		bcs	OSWORD_0_read_line_skip_err	;if carry set then illegal character or other error
 		btst.b	#$02, sysvar_OUTSTREAM_DEST
 		bne	OSWORD_0_read_line_skip_novdu	;if Carry set E937
@@ -492,7 +492,7 @@ OSWORD_0_read_line_skip_notdel				; LE942
 		beq	OSWORD_0_read_line_loop_read	;so E924
 		move.b	#$7F,D0				;else output DELETES
 							; LE94B
-.cllp		SWI	OS_WriteC			;delete printed chars
+.cllp		SWI	XOS_WriteC			;delete printed chars
 		lea	-1(A1),A1			;decrement pointer
 		subq.l	#1,D5				;and counter
 		bne	.cllp				;loop until pointer ==0
@@ -512,7 +512,7 @@ OSWORD_0_read_line_skip_not_ctrl_u			; LE953
 		lea	1(A1),A1
 		bra	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
 OSWORD_0_read_line_skip_return				; LE96C		
-		SWI	OS_NewLine			;output CR/LF   
+		SWI	XOS_NewLine			;output CR/LF   
 		bsr	callNETV			;call Econet vector
 OSWORD_0_read_line_skip_err				; LE972
 		move.l	D5,D1
@@ -532,3 +532,194 @@ SWI_OS_Byte:
 
 SWI_OS_CLI:	move.l	(CLIV),-(A7)
 		rts
+
+
+ErrBlk_BadBase:
+		dc.l	$16A
+		dc.b    "Bad base", 0
+		align	2
+ErrBlk_BadNumber:
+		dc.l	$16B
+		dc.b    "Bad number", 0
+		align	2
+ErrBlk_NumberTooBig:
+		dc.l	$16C
+		dc.b    "Number too big", 0
+		align	2
+
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;
+; ReadUnsigned.
+; ============
+;
+; Read an unsigned number from a string in decimal (no prefix), hex (&)
+; or given base (nn_). Leading spaces are stripped.
+; 'Bad base for number' is given if a base is not in 02..10_36
+; 'Bad number' is given if
+;      (i) No valid number was
+;  or (ii) a '<base>_' or '&' has no following valid number
+; 'Number too big' is given if the result overflowed a 32-bit word
+; In    D1 -> string
+;       D0 =  base to read number in (0 means any based number allowed)
+;                bit 31 set -> check term chars for ok-ness
+;                bit 30 set -> restrict range to 00..FF
+;                bit 29 set -> restrict range to 0..D2 (inclusive)
+;                               (overrides bit 30)
+
+; Out   VC : D1 -> first unused char, D2 = number
+;       VS : D1 unchanged, D2 = ?, D0 = error block
+
+SWI_OS_ReadUnsigned:
+		movem.l	D0-D1/D3-D7/A0-A1,-(A7)
+
+		moveq.l	#-1, D7			; limit
+		btst	#30, D0
+		beq.s	.n30
+		moveq.l	#$FF, D7
+.n30:		btst	#29, D0
+		beq.s	.n29
+		move.l	D2, D7
+.n29:		move.l	D0, D6			; remember input flags
+		andi.l	#$FFFFFFF, D0		; limit base
+		cmp.l	#2, D0
+		blt.s	.bb
+		cmp.l	#36, D0
+		ble.s	.bob
+.bb:		moveq.l	#10, D0			; default to base 10
+.bob:		move.l	D0, D5			; D5 contains base
+		move.l	D1, A0
+.sklp:		move.b	(A0)+, D0		
+		cmp.b	#' ', D0
+		beq.s	.sklp
+		move.l	A0, A1
+		subq.l	#1, A1			; keep ptr to start of string after spaces
+		cmp.b	#'&', D0
+		bne.s	.notamp
+		moveq.l	#16, D4			; force base 16
+		bsr.s	ReadNumberInBase
+.ckres		bvs.s	.retBadD0
+		move.l	A0, 4(A7)		; return updated pointer in D1
+		btst	#31, D6
+		beq.s	.nockt
+		move.b	(A0), D0
+		cmp.b	#' ', D0		; check terminating char
+		bgt.s	.badNum
+.nockt:		cmp.l	D7, D2
+		bhi.s	.numBig
+.retok:		movem.l (A7)+, D0-D1/D3-D7/A0-A1
+		CLV
+		rts
+
+.notamp:	move.l	A1, A0			; back to start of string
+		moveq.l	#10, D4
+		bsr.s	ReadNumberInBase
+		bvc.s	.okb
+		move.l	D5, D4			; Failed to read a decimal base
+		bra.s	.nob
+.okb:		move.l	D2, D4			; assume ok
+		move.b	(A0)+, D0		; check char after potential base
+		cmp.b	#'_', D0
+		beq.s	.rb
+.nob:		move.l	D5, D4			; nope, move base back as spec'd in call
+		move.l	A1, A0			; step back textptr
+.rb:		cmp.l	#2, D4
+		blt.s	.badBase
+		cmp.l	#36, D4
+		bhi.s	.badBase
+		bsr.s	ReadNumberInBase
+		bra.s	.ckres
+
+.badBase:	lea.l   ErrBlk_BadBase, A0
+		bra.s	.retBad
+.numBig:	lea.l	ErrBlk_NumberTooBig, A0
+		bra.s	.retBad
+.badNum:	lea.l	ErrBlk_BadNumber, A0
+		bra.s	.retBad
+
+.retBad:	move.l	A0, D0
+.retBadD0:	move.l	D0,0(A7)	
+		movem.l (A7)+, D0-D1/D3-D7/A0-A1
+		SEV
+		rts
+
+
+; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;
+; ReadNumberInBase
+; ================
+
+; In    A0 -> string, D4 = base (valid)
+
+; Out   VC : Number read in D2, A0 updated. D3 = number of chars used
+;       VS : A0 preserved, D0 -> error block
+
+ReadNumberInBase:
+		movem.l	D0/D5-6/A0,-(A7)
+
+        	moveq.l	#0, D2		; Result
+        	moveq.l	#0, D3		; Number of valid digits read
+		moveq.l #0, D0		; clear high part of D0
+.clp		bsr.s	GetCharForReadNumber
+        	bne.s	.done		; Finished ?
+        	move.l	D4, D5		; loop counter for multiply
+        	moveq.l	#0, D6		; Multiply by repeated addition. Base <> 0 !
+        	exg.l	D2, D6
+        	bra.s	.mlpe
+.mlp:		add.l	D6, D2
+        	bcs.s	.numBig		; Now checks for overflow !
+.mlpe:		dbf	D5, .mlp
+		add.l	D0, D2
+	        bcc.s  	.clp
+        	bra.s	.numBig		; Now checks for overflow here too!
+
+.done:		cmp.l	#0, D3		; Read any chars at all ? VClear
+		beq.s	.badNum
+		move.l	A0, 12(A7)	; Update string^
+		movem.l (A7)+, D0/D5-D6/A0
+		CLV
+		rts
+
+.badNum:	lea.l	ErrBlk_BadNumber, A0
+		bra.s	.retBad
+.numBig:	lea.l	ErrBlk_NumberTooBig, A0
+		bra.s	.retBad
+.retBad		move.l	A0, 0(A7)	
+		movem.l (A7)+, D0/D5-D6/A0
+		SEV
+		rts
+
+; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;
+; GetCharForReadNumber
+; ====================
+;
+; Read a digit and validate for reading in current base. Bases 2..36 are valid
+
+; In    A0 -> string, D4 = base for number input
+
+; Out   EQ -> D0.b = valid number in [0..base-1], r1++
+;       NE -> D0 invalid, A0 same
+
+GetCharForReadNumber:
+
+        move.b	(A0),D0
+        cmp.b	#"0", D0
+        blo.s	.FT95
+        cmp.b	#'9', D0
+        bls.s	.FT50
+        and.b	#$DF, D0
+        cmp.b   #'A', D0        ; Always hex it, even if reading in decimal
+        blo.s	.FT95
+        cmp.b	#'Z', D0
+        bhi.s	.FT95
+        sub.b	#'A'-('0'+10), D0
+.FT50:  sub.b	#'0', D0
+        cmp.b	D4, D0		; digit in [0..base-1] ?
+        bhs.b   .FT95
+        addq.l	#1, A0
+        addq.l	#1, D3
+        ori	#CC_Z_M, CCR    ; EQ
+        rts
+
+.FT95:	andi	#~CC_Z_M, CCR	; NE
+        rts
