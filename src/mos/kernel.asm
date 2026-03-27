@@ -1228,7 +1228,6 @@ cmdGO:		move.l	A0, D1
 		;enter user mode set up a stack and then enable interrupts and change mode
 		andi.w	#$80FF, SR			; drop back to user mode
 		SWI	XOS_NewLine
-		bvs	.cmdGOBad
 		move.l	#DEFAULT_USR_STACK, A7
 		move.l	D2, A0
 		jmp	(A0)
